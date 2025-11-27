@@ -1,6 +1,3 @@
-DOKUMENTACJA WYBORU PROJEKTU 
-
-
 Mateusz Janecki
 Nr. Albumu: 155182
 Kierunek: Informatyka
@@ -11,16 +8,12 @@ Przedmiot: Systemy Operacyjne (Projekt)
 
 
 Link do GitHub:
-https://github.com/JaneckiGit
-Nazwa GitHub: JaneckiGit
-
+https://github.com/JaneckiGit/
 LInk do REPOZYTORIUM PROJEKTU
-
+https://github.com/JaneckiGit/ProjektSO/
 
 
 Wybór Projektu: 
-12 (projekt z Listy Projekty_SO_ST_2025-2026.pdf)
-
 Temat 12 
 Autobus podmiejski. 
 
