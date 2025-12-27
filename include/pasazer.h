@@ -1,4 +1,6 @@
-#pragma once
-#include "common.h"
+#ifndef PASAZER_H
+#define PASAZER_H
 
-void proces_pasazer(int id, int semid, int shmid, int msgid);
+void proces_pasazer(int id_gen);
+
+#endif

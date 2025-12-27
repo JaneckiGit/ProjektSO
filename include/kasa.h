@@ -1,4 +1,6 @@
-#pragma once
-#include "common.h"
+#ifndef KASA_H
+#define KASA_H
 
-void proces_kasa(int semid, int shmid, int msgid);
+void proces_kasa(int nr_okienka);
+
+#endif
