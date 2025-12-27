@@ -15,16 +15,24 @@ extern int sem_id, shm_id, msg_id;
 static volatile int force_depart = 0;
 static volatile int running = 1;
 
-void handler_bus(int sig) {
-    if (sig == SIGUSR1) force_depart = 1;
-    if (sig == SIGINT || sig == SIGTERM) running = 0;
+void handler_bus_sigusr1(int sig) {
+    (void)sig;
+    force_depart = 1;
 }
+
+void handler_bus_sigusr2(int sig) {
+    (void)sig;
+    running = 0;
+}
+
+void ustaw_sygnaly_busa() {
+    signal(SIGUSR1, handler_bus_sigusr1);
+    signal(SIGUSR2, handler_bus_sigusr2);
+}
+
 void proces_autobus(int id_wew, int max_p, int max_r, int czas_postoju) {
-    struct sigaction sa = {0};
-    sa.sa_handler = handler_bus;
-    sigaction(SIGUSR1, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
+    ustaw_sygnaly_busa();
+
 
     char bus_tag[16];
     snprintf(bus_tag, sizeof(bus_tag), "BUS %d", id_wew);
