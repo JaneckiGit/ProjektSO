@@ -1,74 +1,120 @@
+// common.h - Wspólne definicje i struktury
 #ifndef COMMON_H
 #define COMMON_H
 
 #include <sys/types.h>
 #include <sys/ipc.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <signal.h>
 #include <time.h>
 #include <errno.h>
 #include <string.h>
 #include <stdarg.h>
+#include <fcntl.h>
+#include <pthread.h>
 
-// Klucze IPC
-#define KEY_SEM  0x1234
-#define KEY_SHM  0x5678
-#define KEY_MSG  0x9ABC
+// Stałe
+#define MAX_BUSES           50
+#define MAX_CAPACITY        200
+#define MAX_REGISTERED      1000
+#define MAX_CZEKAJACE_DZIECI 100
 
-// Definicje kolorów (ANSI)
+// Kolory ANSI
 #define KOLOR_RESET   "\033[0m"
-#define KOLOR_DYSP    "\033[1;31m" // Czerwony
-#define KOLOR_KASA    "\033[1;32m" // Zielony
-#define KOLOR_BUS     "\033[1;33m" // Żółty
-#define KOLOR_PAS     "\033[1;36m" // Cyjan
+#define KOLOR_MAIN    "\033[1;37m"
+#define KOLOR_KASA    "\033[1;32m"
+#define KOLOR_BUS     "\033[1;33m"
+#define KOLOR_DYSP    "\033[1;31m"
+#define KOLOR_PAS     "\033[1;36m"
+#define KOLOR_STAT    "\033[1;35m"
 
 // Indeksy semaforów
-#define SEM_DOOR_NORMAL  0 // Wejście dla pasażerów z bagażem (mutex)
-#define SEM_DOOR_ROWER   1 // Wejście dla pasażerów z rowerem (mutex)
-#define SEM_BUS_STOP     2 // Miejsce na przystanku (mutex)
-#define SEM_KASA_1       3 // Okienko kasowe 1 (mutex)
-#define SEM_KASA_2       4 // Okienko kasowe 2 (mutex)
-#define SEM_LOG          5 // Synchronizacja logowania
-#define LICZBA_SEM       6
+#define SEM_DOOR_NORMAL  0
+#define SEM_DOOR_ROWER   1
+#define SEM_BUS_STOP     2
+#define SEM_KASA_1       3
+#define SEM_KASA_2       4
+#define SEM_LOG          5
+#define SEM_SHM          6
+#define SEM_COUNT        7
 
-// Struktura Pamięci Dzielonej (wymagane nazwy polskie)
+// Struktura dziecka czekającego na rodzica
 typedef struct {
-    int aktualny_autobus_pid;        // PID autobusu stojącego na peronie (0 = brak)
-    int pasazerow_w_autobusie;       // Licznik miejsc zajętych (z uwzględnieniem dzieci)
-    int liczba_osob_w_autobusie;     // Rzeczywista liczba głów (do logowania)
-    int rowerow_w_autobusie;         // Licznik rowerów
-    bool stacja_otwarta;             // Flaga działania stacji (czy generator tworzy pasażerów)
-    bool wsiadanie_dozwolone;        // Flaga czy pasażerowie mogą wsiadać (SIGUSR2 = false)
-    bool autobus_na_stanowisku;      // Czy autobus fizycznie stoi
-    int licznik_biletow;             // Globalny licznik sprzedanych biletów
-    int total_passengers_generated;  // Statystyka całkowita
-    int passengers_waiting;          // Czekający na dworcu (statystyka)
-    int passengers_in_transit;       // W autobusach (statystyka)
-    int vip_waiting;                 // VIP-y czekające (priorytet)
+    pid_t pid_dziecka;
+    int id_dziecka;
+    int wiek_dziecka;
+    bool ma_rodzica;
+    pid_t pid_rodzica;
+} CzekajaceDziecko;
+
+// Pamięć dzielona
+typedef struct {
+    int param_N;
+    int param_P;
+    int param_R;
+    int param_T;
+    
+    bool stacja_otwarta;
+    bool symulacja_aktywna;
+    
+    pid_t aktualny_bus_pid;
+    int aktualny_bus_id;
+    int miejsca_zajete;
+    int rowery_zajete;
+    bool bus_na_peronie;
+    
+    int total_pasazerow;
+    int pasazerow_w_trasie;
+    int pasazerow_czeka;
+    int sprzedanych_biletow;
+    int vip_count;
+    int total_przewiezionych;
+    int odrzuconych_bez_biletu;
+    
+    int obsluzonych_kasa1;
+    int obsluzonych_kasa2;
+    
+    pid_t registered_pids[MAX_REGISTERED];
+    int registered_wiek[MAX_REGISTERED];
+    int registered_count;
+    
+    // Dzieci czekające na rodziców
+    CzekajaceDziecko dzieci[MAX_CZEKAJACE_DZIECI];
+    int dzieci_count;
 } SharedData;
 
-// Struktura wiadomości (Bilet)
+// Wiadomość - bilet
 typedef struct {
-    long mtype;       // PID autobusu (adresat)
+    long mtype;
     pid_t pid_pasazera;
-    int czy_rower;    // 1 - tak, 0 - nie
-    int czy_vip;      // 1 - tak, 0 - nie
-    int ile_miejsc;   // 1 lub 2 (jeśli z dzieckiem)
-    int wiek;         // Wiek pasażera (dziecko <8 z rodzicem)
-    int z_dzieckiem;  // 1 - rodzic z dzieckiem <8 lat
+    int id_pasazera;
+    int wiek;
+    int czy_rower;
+    int czy_vip;
+    int ma_bilet;
+    // Dane dziecka (jeśli jest)
+    pid_t pid_dziecka;
+    int id_dziecka;
+    int wiek_dziecka;
 } BiletMsg;
 
-// Funkcje pomocnicze (utils)
+// Zmienne IPC
+extern int sem_id;
+extern int shm_id;
+extern int msg_id;
+
+// Funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);
 int losuj(int min, int max);
-void m_sleep(int ms);
-long aktualny_czas_ms();
+void msleep(int ms);
+void get_timestamp(char* buf, size_t size);
 
 #endif
