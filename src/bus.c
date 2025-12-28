@@ -1,5 +1,6 @@
 // bus.c - Modul autobusu
 #include "bus.h"
+#include "common.h"
 
 // Flagi sygnałów 
 static volatile sig_atomic_t wymuszony_odjazd = 0;

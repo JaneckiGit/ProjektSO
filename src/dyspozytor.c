@@ -80,6 +80,7 @@ void proces_dyspozytor(int N, int P, int R, int T) {
     srand(time(NULL) ^ getpid());
 
     // KONFIGURACJA SYGNALOW (WYMAGANIE 5.2.d: sigaction())
+    // Signal
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handler_dyspozytor;
