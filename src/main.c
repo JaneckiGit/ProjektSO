@@ -1,5 +1,6 @@
 // main.c - Punkt startowy symulacji
 #include "dyspozytor.h"
+#include "common.h"
 
 int main(int argc, char *argv[]) {
     int N = 3;     // Liczba autobusow
