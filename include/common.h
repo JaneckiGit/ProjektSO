@@ -104,6 +104,7 @@ typedef struct {
     pid_t pid_dziecka;
     int id_dziecka;
     int wiek_dziecka;
+    int ile_miejsc; 
 } BiletMsg;
 
 // Zmienne IPC
