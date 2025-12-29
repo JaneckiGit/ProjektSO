@@ -119,5 +119,6 @@ void log_print(const char* kolor, const char* tag, const char* fmt, ...);
 int losuj(int min, int max);
 void msleep(int ms);
 void get_timestamp(char* buf, size_t size);
+int init_ipc_client(void);  // dla procesow potomnych
 
 #endif
