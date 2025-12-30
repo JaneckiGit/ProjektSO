@@ -4,64 +4,76 @@
 
 static volatile int kasa_running = 1;
 static pthread_mutex_t kasa_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t kasa_cond = PTHREAD_COND_INITIALIZER;
 
-// Struktura dla watku okienka
 typedef struct {
-    int numer;
-    int obsluzonych;
-} OkienkoArg;
+    int numer;           // numer kasy 1..K
+    pthread_t tid;       // ID watku
+} KasaArg;
 
 // Handler sygnalow kasy
 static void handler_kasa(int sig) {
     (void)sig;
     kasa_running = 0;
+    pthread_cond_broadcast(&kasa_cond);
 }
 
-// Watek okienka kasowego
-static void* okienko_func(void* arg) {
-    OkienkoArg* okno = (OkienkoArg*)arg;
+// Watek kasy - kazda kasa to osobny watek
+static void* kasa_watek(void* arg) {
+    KasaArg* kasa = (KasaArg*)arg;
     char tag[16];
-    snprintf(tag, sizeof(tag), "KASA");
+    snprintf(tag, sizeof(tag), "KASA %d", kasa->numer);
 
-    log_print(KOLOR_KASA, tag, "Okienko %d otwarte. TID=%lu",
-              okno->numer, (unsigned long)pthread_self());
+    log_print(KOLOR_KASA, tag, "Otwarta. TID=%lu", (unsigned long)pthread_self());
 
     while (kasa_running) {
-        //Symulacja pracy okienka 
         pthread_mutex_lock(&kasa_mutex);
-        okno->obsluzonych++;
+        
+        while (kasa_running) {
+            pthread_cond_wait(&kasa_cond, &kasa_mutex);
+            if (!kasa_running) break;
+        }
+        
         pthread_mutex_unlock(&kasa_mutex);
-
-        usleep(500000);  
     }
 
-    log_print(KOLOR_KASA, tag, "Okienko %d zamknięte. Obsłużono: %d",
-              okno->numer, okno->obsluzonych);
+    SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
+    if (shm != (void *)-1) {
+        int obsluzonych = shm->obsluzonych_kasa[kasa->numer - 1];
+        log_print(KOLOR_KASA, tag, "Zamknieta. Obsluzono: %d pasazerow. TID=%lu", 
+                  obsluzonych, (unsigned long)pthread_self());
+        shmdt(shm);
+    } else {
+        log_print(KOLOR_KASA, tag, "Zamknieta. TID=%lu", (unsigned long)pthread_self());
+    }
 
     return NULL;
 }
 
-// proces_kasa - Glowna funkcja kasy
-void proces_kasa(void) {
-    // Konfiguracja sygnalow
+// Glowna funkcja - uruchamia K watkow kas
+void proces_kasa(int K) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handler_kasa;
-    sa.sa_flags = SA_RESTART;
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
+    sa.sa_flags = 0;
+    if (sigaction(SIGINT, &sa, NULL) == -1) perror("kasa sigaction SIGINT");
+    if (sigaction(SIGTERM, &sa, NULL) == -1) perror("kasa sigaction SIGTERM");
 
-    log_print(KOLOR_KASA, "KASA", "Otwarcie kasy. PID=%d", getpid());
+    log_print(KOLOR_KASA, "KASA", "Uruchamiam %d kas (watkow). PID=%d", K, getpid());
 
-    // Tworzenie wątków dla 2 okienek 
-    pthread_t tid1, tid2;
-    OkienkoArg okno1 = {1, 0};
-    OkienkoArg okno2 = {2, 0};
+    if (pthread_mutex_init(&kasa_mutex, NULL) != 0) { perror("pthread_mutex_init"); exit(1); }
+    if (pthread_cond_init(&kasa_cond, NULL) != 0) { perror("pthread_cond_init"); exit(1); }
 
-    pthread_create(&tid1, NULL, okienko_func, &okno1);
-    pthread_create(&tid2, NULL, okienko_func, &okno2);
+    KasaArg* kasy = malloc(K * sizeof(KasaArg));
+    if (!kasy) { perror("malloc kasy"); exit(1); }
 
-    // Wątek główny - raportowanie 
+    for (int i = 0; i < K; i++) {
+        kasy[i].numer = i + 1;
+        if (pthread_create(&kasy[i].tid, NULL, kasa_watek, &kasy[i]) != 0) {
+            perror("pthread_create kasa");
+        }
+    }
+
     while (kasa_running) {
         SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
         if (shm != (void *)-1) {
@@ -71,33 +83,22 @@ void proces_kasa(void) {
             }
             shmdt(shm);
         }
-        sleep(3);
+        usleep(500000);
     }
 
     kasa_running = 0;
+    pthread_cond_broadcast(&kasa_cond);
 
-    pthread_join(tid1, NULL);
-    pthread_join(tid2, NULL);
+    for (int i = 0; i < K; i++) {
+        if (pthread_join(kasy[i].tid, NULL) != 0) {
+            perror("pthread_join kasa");
+        }
+    }
 
     pthread_mutex_destroy(&kasa_mutex);
+    pthread_cond_destroy(&kasa_cond);
+    free(kasy);
 
-    // Wyświetl listę zarejestrowanych 
-    // SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
-    // if (shm != (void *)-1) {
-    //     log_print(KOLOR_KASA, "KASA", "=== ZAREJESTROWANI PASAŻEROWIE ===");
-    //     for (int i = 0; i < shm->registered_count && i < 20; i++) {
-    //         log_print(KOLOR_KASA, "KASA", "  %3d. PID=%d, Wiek=%d",
-    //                   i+1, shm->registered_pids[i], shm->registered_wiek[i]);
-    //     }
-    //     if (shm->registered_count > 20) {
-    //         log_print(KOLOR_KASA, "KASA", "  ... i %d więcej",
-    //                   shm->registered_count - 20);
-    //     }
-    //     log_print(KOLOR_KASA, "KASA", "ŁĄCZNIE: %d pasażerów, %d biletów",
-    //               shm->registered_count, shm->sprzedanych_biletow);
-    //     shmdt(shm);
-    // }
-
-    log_print(KOLOR_KASA, "KASA", "Zamknięcie kasy. PID=%d", getpid());
+    log_print(KOLOR_KASA, "KASA", "Wszystkie kasy zamkniete. PID=%d", getpid());
     exit(0);
 }

@@ -66,7 +66,7 @@ void proces_pasazer(int id_pas) {
 
         // KUPNO BILETU W KASIE
     if (!czy_vip) {
-        /* Wybór okienka (losowo 1 lub 2) */
+        /* Wybór kasy(losowo 1 lub 2) */
         int sem_kasa = (losuj(1, 2) == 1) ? SEM_KASA_1 : SEM_KASA_2;
         struct sembuf zajmij_kase = {sem_kasa, -1, 0};
         struct sembuf zwolnij_kase = {sem_kasa, 1, 0};
