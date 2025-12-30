@@ -81,23 +81,7 @@ void proces_kasa(void) {
 
     pthread_mutex_destroy(&kasa_mutex);
 
-    // Wyświetl listę zarejestrowanych 
-    // SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
-    // if (shm != (void *)-1) {
-    //     log_print(KOLOR_KASA, "KASA", "=== ZAREJESTROWANI PASAŻEROWIE ===");
-    //     for (int i = 0; i < shm->registered_count && i < 20; i++) {
-    //         log_print(KOLOR_KASA, "KASA", "  %3d. PID=%d, Wiek=%d",
-    //                   i+1, shm->registered_pids[i], shm->registered_wiek[i]);
-    //     }
-    //     if (shm->registered_count > 20) {
-    //         log_print(KOLOR_KASA, "KASA", "  ... i %d więcej",
-    //                   shm->registered_count - 20);
-    //     }
-    //     log_print(KOLOR_KASA, "KASA", "ŁĄCZNIE: %d pasażerów, %d biletów",
-    //               shm->registered_count, shm->sprzedanych_biletow);
-    //     shmdt(shm);
-    // }
-
+    
     log_print(KOLOR_KASA, "KASA", "Zamknięcie kasy. PID=%d", getpid());
     exit(0);
 }
