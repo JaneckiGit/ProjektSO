@@ -102,22 +102,3 @@ void proces_kasa(int K) {
     log_print(KOLOR_KASA, "KASA", "Wszystkie kasy zamkniete. PID=%d", getpid());
     exit(0);
 }
-// Main - uruchamiany przez exec() z dyspozytora
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Uzycie: %s <liczba_kas>\n", argv[0]);
-        exit(1);
-    }
-    
-    if (init_ipc_client() == -1) exit(1);
-    
-    int K = atoi(argv[1]);
-    if (K <= 0 || K > MAX_KASY) {
-        fprintf(stderr, "Blad: K musi byc 1-%d\n", MAX_KASY);
-        exit(1);
-    }
-    
-    proces_kasa(K);
-    
-    return 0;
-}
