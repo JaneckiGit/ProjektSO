@@ -116,20 +116,28 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
                 int ile_osob = (bilet.wiek_dziecka > 0) ? 2 : 1;
                 
-                if (shm->miejsca_zajete + ile_osob > pojemnosc) {
-                    akceptuj = false;
-                    snprintf(powod, sizeof(powod), "brak miejsc (%d/%d)",
-                             shm->miejsca_zajete, pojemnosc);
-                }
-                if (bilet.czy_rower && shm->rowery_zajete >= rowery) {
-                    akceptuj = false;
-                    snprintf(powod, sizeof(powod), "brak miejsc na rowery (%d/%d)",
-                             shm->rowery_zajete, rowery);
+                if (bilet.czy_rower) {
+                    // Pasazer z rowerem - zajmuje TYLKO miejsce rowerowe
+                    if (shm->rowery_zajete + ile_osob > rowery) {
+                        akceptuj = false;
+                        snprintf(powod, sizeof(powod), "brak miejsc rowerowych (%d/%d)",
+                                 shm->rowery_zajete, rowery);
+                    }
+                } else {
+                    // Pasazer bez roweru - zajmuje miejsce normalne
+                    if (shm->miejsca_zajete + ile_osob > pojemnosc) {
+                        akceptuj = false;
+                        snprintf(powod, sizeof(powod), "brak miejsc normalnych (%d/%d)",
+                                 shm->miejsca_zajete, pojemnosc);
+                    }
                 }
 
                 if (akceptuj) {
-                    shm->miejsca_zajete += ile_osob;
-                    if (bilet.czy_rower) shm->rowery_zajete++;
+                    if (bilet.czy_rower) {
+                        shm->rowery_zajete += ile_osob;
+                    } else {
+                        shm->miejsca_zajete += ile_osob;
+                    }
                     pasazerow_w_kursie += ile_osob;
 
                     semop(sem_id, &shm_unlock, 1);
@@ -153,9 +161,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                                   shm->rowery_zajete, rowery);
                     }
 
-                    // Autobus pełny 
-                    if (shm->miejsca_zajete >= pojemnosc) {
-                        log_print(KOLOR_BUS, tag, "PEŁNY! Odjazd. PID=%d", getpid());
+                    // Autobus pelny (obie pule)
+                    if (shm->miejsca_zajete >= pojemnosc && shm->rowery_zajete >= rowery) {
+                        log_print(KOLOR_BUS, tag, "PELNY - odjazd! PID=%d", getpid());
                         break;
                     }
                 } else {
