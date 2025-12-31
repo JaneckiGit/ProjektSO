@@ -109,11 +109,25 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             while (czas_uplyniony < czas_postoju && !wymuszony_odjazd && bus_running && shm->stacja_otwarta) {
             // Odbieranie biletów 
             BiletMsg bilet;
-            ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long),
-                                 getpid(), IPC_NOWAIT);
+            ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
+            
+            // Jesli brak VIP, sprawdz zwyklych pasazerow
+            if (ret == -1 && errno == ENOMSG) {
+                ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT);
+            }
 
             if (ret != -1) {
-                // Sprawdzenie limitów 
+                // Kierowca sprawdza bilet
+                if (!bilet.ma_bilet) {
+                    log_print(KOLOR_BUS, tag, "Kierowca: PAS %d BEZ BILETU - odmowa!", bilet.id_pasazera);
+                    semop(sem_id, &shm_lock, 1);
+                    shm->odrzuconych_bez_biletu++;
+                    semop(sem_id, &shm_unlock, 1);
+                    continue;
+                }
+                
+                log_print(KOLOR_BUS, tag, "Kierowca: PAS %d - bilet OK.", bilet.id_pasazera);
+                
                 bool akceptuj = true;
                 char powod[64] = "";
 

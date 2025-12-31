@@ -87,9 +87,10 @@ static void zapisz_raport_koncowy(SharedData *shm) {
         "Przewiezionych: %d\n"
         "Biletow: %d\n"
         "VIP: %d\n"
+        "Odrzuconych (brak biletu): %d\n"
         "========================================\n",
         shm->total_pasazerow, shm->total_przewiezionych,
-        shm->sprzedanych_biletow, shm->vip_count);
+        shm->sprzedanych_biletow, shm->vip_count, shm->odrzuconych_bez_biletu);
     write(fd, buf, len);
 
     for (int i = 0; i < shm->param_K; i++) {
@@ -332,6 +333,7 @@ SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         log_print(KOLOR_STAT, "STAT", "Przewiezionych: %d", s->total_przewiezionych);
         log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
         log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
+        log_print(KOLOR_STAT, "STAT", "Bez biletu: %d", s->odrzuconych_bez_biletu);
         for (int i = 0; i < s->param_K; i++) {
             log_print(KOLOR_STAT, "STAT", "KASA %d: %d", i+1, s->obsluzonych_kasa[i]);
         }
