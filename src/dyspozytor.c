@@ -28,21 +28,18 @@ static void handler_dyspozytor(int sig) {
 }
 
 // Inicjalizacja semaforow (WYMAGANIE 5.2.e: semget(), semctl())
-static void init_semafory(void) {
-    union semun {
-        int val;
-        struct semid_ds *buf;
-        unsigned short *array;
-    } arg;
-
+static void init_semafory(int K) {
+    union semun { int val; } arg;
     arg.val = 1;
-    semctl(sem_id, SEM_DOOR_NORMAL, SETVAL, arg);  /* 1 osoba w drzwiach */
-    semctl(sem_id, SEM_DOOR_ROWER, SETVAL, arg);   /* 1 osoba w drzwiach */
-    semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);     /* 1 autobus na peronie */
-    semctl(sem_id, SEM_KASA_1, SETVAL, arg);       /* Okienko 1 */
-    semctl(sem_id, SEM_KASA_2, SETVAL, arg);       /* Okienko 2 */
-    semctl(sem_id, SEM_LOG, SETVAL, arg);          /* Logowanie */
-    semctl(sem_id, SEM_SHM, SETVAL, arg);          /* Pamięć dzielona */
+    semctl(sem_id, SEM_DOOR_NORMAL, SETVAL, arg);
+    semctl(sem_id, SEM_DOOR_ROWER, SETVAL, arg);
+    semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);
+    semctl(sem_id, SEM_LOG, SETVAL, arg);
+    semctl(sem_id, SEM_SHM, SETVAL, arg);
+    
+    for (int i = 0; i < K; i++) {
+        semctl(sem_id, SEM_KASA_BASE + i, SETVAL, arg);
+    }
 }
 
 // Sprzatanie zasobow IPC
@@ -76,7 +73,7 @@ static void shutdown_children(void) {
 }
 
 // proces_dyspozytor - Glowna funkcja dyspozytora
-void proces_dyspozytor(int N, int P, int R, int T) {
+void proces_dyspozytor(int N, int P, int R, int T, int K) {
     srand(time(NULL) ^ getpid());
 
     // KONFIGURACJA SYGNALOW (WYMAGANIE 5.2.d: sigaction())
@@ -102,8 +99,8 @@ void proces_dyspozytor(int N, int P, int R, int T) {
         exit(1);
     }
 
-    sem_id = semget(key_sem, SEM_COUNT, IPC_CREAT | 0600);
-    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
+    int sem_count = SEM_COUNT_BASE + K;
+    sem_id = semget(key_sem, sem_count, IPC_CREAT | 0600);    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
     msg_id = msgget(key_msg, IPC_CREAT | 0600);
 
     if (sem_id == -1 || shm_id == -1 || msg_id == -1) {
@@ -112,7 +109,7 @@ void proces_dyspozytor(int N, int P, int R, int T) {
         exit(1);
     }
 
-    init_semafory();
+    init_semafory(K);
 
     // INICJALIZACJA PAMIECI DZIELONEJ (WYMAGANIE 5.2.g: shmat(), shmdt())
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
@@ -127,6 +124,7 @@ void proces_dyspozytor(int N, int P, int R, int T) {
     shm->param_P = P;
     shm->param_R = R;
     shm->param_T = T;
+    shm->param_K = K;
     shm->stacja_otwarta = true;
     shm->symulacja_aktywna = true;
     shm->bus_na_peronie = false;
@@ -143,24 +141,20 @@ void proces_dyspozytor(int N, int P, int R, int T) {
     }
 
     // START
-    log_print(KOLOR_MAIN, "MAIN", "START: N=%d P=%d R=%d T=%d", N, P, R, T);
-    log_print(KOLOR_DYSP, "DYSP", "Dyspozytor rozpoczął pracę. PID=%d", getpid());
+    log_print(KOLOR_MAIN, "MAIN", "START: N=%d P=%d R=%d T=%d K=%d", N, P, R, T, K);    log_print(KOLOR_DYSP, "DYSP", "Dyspozytor rozpoczął pracę. PID=%d", getpid());
     log_print(KOLOR_DYSP, "DYSP", ">>> Sygnały: kill -SIGUSR1 %d | kill -SIGUSR2 %d <<<", 
               getpid(), getpid());
 
     // URUCHOMIENIE KASY (WYMAGANIE 5.2.b: fork())
     pid_kasa = fork();
-    if (pid_kasa == -1) {
-        perror("fork kasa");
-        cleanup_ipc();
-        exit(1);
-    }
+    if (pid_kasa == -1) { perror("fork kasa"); cleanup_ipc(); exit(1); }
     if (pid_kasa == 0) {
-        /* Proces potomny - kasa */
-        proces_kasa();
-        exit(0);
+        char arg_k[16];
+        snprintf(arg_k, sizeof(arg_k), "%d", K);
+        execl("./bin/kasa", "kasa", arg_k, NULL);
+        perror("execl kasa"); exit(1);
     }
-    log_print(KOLOR_KASA, "KASA", "Otwarcie. PID=%d", pid_kasa);
+    log_print(KOLOR_KASA, "KASA", "Uruchomiono (K=%d watkow). PID=%d", K, pid_kasa);
 
     // URUCHOMIENIE AUTOBUSOW
     ile_busow = N;

@@ -4,20 +4,21 @@
 
 static volatile int kasa_running = 1;
 static pthread_mutex_t kasa_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t kasa_cond = PTHREAD_COND_INITIALIZER;
 
-// Struktura dla watku okienka
 typedef struct {
     int numer;
-    int obsluzonych;
-} OkienkoArg;
+    pthread_t tid;
+} KasaArg;
 
 // Handler sygnalow kasy
 static void handler_kasa(int sig) {
     (void)sig;
     kasa_running = 0;
+    pthread_cond_broadcast(&kasa_cond);
 }
 
-// Watek okienka kasowego
+// Watek kas
 static void* okienko_func(void* arg) {
     OkienkoArg* okno = (OkienkoArg*)arg;
     char tag[16];
@@ -42,46 +43,65 @@ static void* okienko_func(void* arg) {
 }
 
 // proces_kasa - Glowna funkcja kasy
-void proces_kasa(void) {
-    // Konfiguracja sygnalow
+void proces_kasa(int K) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handler_kasa;
-    sa.sa_flags = SA_RESTART;
+    sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 
-    log_print(KOLOR_KASA, "KASA", "Otwarcie kasy. PID=%d", getpid());
+    log_print(KOLOR_KASA, "KASA", "Uruchamiam %d kas (watkow). PID=%d", K, getpid());
 
-    // Tworzenie wątków dla 2 okienek 
-    pthread_t tid1, tid2;
-    OkienkoArg okno1 = {1, 0};
-    OkienkoArg okno2 = {2, 0};
+    pthread_mutex_init(&kasa_mutex, NULL);
+    pthread_cond_init(&kasa_cond, NULL);
 
-    pthread_create(&tid1, NULL, okienko_func, &okno1);
-    pthread_create(&tid2, NULL, okienko_func, &okno2);
+    KasaArg* kasy = malloc(K * sizeof(KasaArg));
+    if (!kasy) { perror("malloc kasy"); exit(1); }
 
-    // Wątek główny - raportowanie 
+    for (int i = 0; i < K; i++) {
+        kasy[i].numer = i + 1;
+        pthread_create(&kasy[i].tid, NULL, kasa_watek, &kasy[i]);
+    }
+
     while (kasa_running) {
         SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
         if (shm != (void *)-1) {
-            if (!shm->symulacja_aktywna) {
-                shmdt(shm);
-                break;
-            }
+            if (!shm->symulacja_aktywna) { shmdt(shm); break; }
             shmdt(shm);
         }
-        sleep(3);
+        usleep(500000);
     }
 
     kasa_running = 0;
+    pthread_cond_broadcast(&kasa_cond);
 
-    pthread_join(tid1, NULL);
-    pthread_join(tid2, NULL);
+    for (int i = 0; i < K; i++) {
+        pthread_join(kasy[i].tid, NULL);
+    }
 
     pthread_mutex_destroy(&kasa_mutex);
+    pthread_cond_destroy(&kasa_cond);
+    free(kasy);
 
-    
-    log_print(KOLOR_KASA, "KASA", "Zamknięcie kasy. PID=%d", getpid());
+    log_print(KOLOR_KASA, "KASA", "Wszystkie kasy zamkniete. PID=%d", getpid());
     exit(0);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Uzycie: %s <liczba_kas>\n", argv[0]);
+        exit(1);
+    }
+    
+    if (init_ipc_client() == -1) exit(1);
+    
+    int K = atoi(argv[1]);
+    if (K <= 0 || K > MAX_KASY) {
+        fprintf(stderr, "Blad: K musi byc 1-%d\n", MAX_KASY);
+        exit(1);
+    }
+    
+    proces_kasa(K);
+    return 0;
 }

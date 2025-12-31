@@ -28,6 +28,8 @@
 #define MAX_CAPACITY        200
 #define MAX_REGISTERED      1000
 #define MAX_CZEKAJACE_DZIECI 100
+#define MAX_KASY            10
+#define DEFAULT_K           1
 
 // Kolory ANSI
 #define KOLOR_RESET   "\033[0m"
@@ -42,11 +44,10 @@
 #define SEM_DOOR_NORMAL  0
 #define SEM_DOOR_ROWER   1
 #define SEM_BUS_STOP     2
-#define SEM_KASA_1       3
-#define SEM_KASA_2       4
-#define SEM_LOG          5
-#define SEM_SHM          6
-#define SEM_COUNT        7
+#define SEM_LOG          3
+#define SEM_SHM          4
+#define SEM_KASA_BASE    5
+#define SEM_COUNT_BASE   5
 
 // Struktura dziecka czekającego na rodzica
 typedef struct {
@@ -63,7 +64,7 @@ typedef struct {
     int param_P;
     int param_R;
     int param_T;
-    
+    int param_K;
     bool stacja_otwarta;
     bool symulacja_aktywna;
     
@@ -80,10 +81,8 @@ typedef struct {
     int vip_count;
     int total_przewiezionych;
     int odrzuconych_bez_biletu;
-    
-    int obsluzonych_kasa1;
-    int obsluzonych_kasa2;
-    
+    int obsluzonych_kasa[MAX_KASY];
+
     pid_t registered_pids[MAX_REGISTERED];
     int registered_wiek[MAX_REGISTERED];
     int registered_count;
@@ -106,7 +105,6 @@ typedef struct {
     pid_t pid_dziecka;
     int id_dziecka;
     int wiek_dziecka;
-    int ile_miejsc; 
 } BiletMsg;
 
 // Zmienne IPC

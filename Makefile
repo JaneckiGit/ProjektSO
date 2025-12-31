@@ -15,6 +15,7 @@ OBJ_DIR = obj
 BIN_DIR = bin
 
 TARGET = $(BIN_DIR)/autobus
+TARGET_KASA = $(BIN_DIR)/kasa
 
 # Pliki źródłowe
 SRCS = $(SRC_DIR)/main.c \
@@ -33,7 +34,7 @@ OBJS = $(OBJ_DIR)/main.o \
        $(OBJ_DIR)/utils.o
 
 # Reguła domyślna
-all: directories $(TARGET)
+all: directories $(TARGET) $(TARGET_KASA)
 	@echo "Kompilacja zakończona: $(TARGET)"
 	@echo "Uruchom: ./$(TARGET) [N] [P] [R] [T]"
 
@@ -46,8 +47,8 @@ $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^
 
 # Kompilacja plików .c do .o
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(TARGET_KASA): $(SRC_DIR)/kasa.c $(SRC_DIR)/utils.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 # Zależności od nagłówków
 $(OBJ_DIR)/main.o: $(SRC_DIR)/main.c include/common.h include/dyspozytor.h

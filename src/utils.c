@@ -78,8 +78,8 @@ int init_ipc_client(void) {
     
     if (key_sem == -1 || key_shm == -1 || key_msg == -1) { perror("ftok"); return -1; }
     
-    sem_id = semget(key_sem, SEM_COUNT, 0600);
-    shm_id = shmget(key_shm, sizeof(SharedData), 0600);
+    sem_id = semget(key_sem, 0, 0600);
+    shm_id = shmget(key_shm, 0, 0600);
     msg_id = msgget(key_msg, 0600);
     
     if (sem_id == -1 || shm_id == -1 || msg_id == -1) { perror("IPC get"); return -1; }

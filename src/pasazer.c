@@ -67,7 +67,9 @@ void proces_pasazer(int id_pas) {
         // KUPNO BILETU W KASIE
     if (!czy_vip) {
         /* Wybór okienka (losowo 1 lub 2) */
-        int sem_kasa = (losuj(1, 2) == 1) ? SEM_KASA_1 : SEM_KASA_2;
+        int K = shm->param_K;
+        int numer_kasy = losuj(1, K);
+        int sem_kasa = SEM_KASA_BASE + (numer_kasy - 1);
         struct sembuf zajmij_kase = {sem_kasa, -1, 0};
         struct sembuf zwolnij_kase = {sem_kasa, 1, 0};
 
@@ -85,8 +87,8 @@ void proces_pasazer(int id_pas) {
             shm->registered_wiek[shm->registered_count] = wiek;
             shm->registered_count++;
         }
-        shm->sprzedanych_biletow += ile_miejsc;
-        semop(sem_id, &shm_unlock, 1);
+        shm->sprzedanych_biletow += 1;
+        shm->obsluzonych_kasa[numer_kasy - 1]++;        semop(sem_id, &shm_unlock, 1);
 
         /* Symulacja czasu zakupu */
         msleep(losuj(200, 500));
@@ -134,7 +136,6 @@ void proces_pasazer(int id_pas) {
                     bilet.wiek_dziecka = wiek_dziecka;
                     bilet.czy_rower = czy_rower;
                     bilet.czy_vip = czy_vip;
-                    bilet.ile_miejsc = ile_miejsc;
 
                     /* Wyślij bilet */
                     if (msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), 0) == 0) {
