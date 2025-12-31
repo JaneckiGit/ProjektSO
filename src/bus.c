@@ -101,7 +101,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         int czas_uplyniony = 0;
         int pasazerow_w_kursie = 0;
 
-        while (czas_uplyniony < czas_postoju && !wymuszony_odjazd && bus_running) {
+        // SIGUSR2 - stacja zamknieta = nie przyjmuj pasazerow
+        if (!shm->stacja_otwarta) {
+            log_print(KOLOR_BUS, tag, "Stacja zamknieta - nie przyjmuje pasazerow, odjezdzam. PID=%d", getpid());
+        } else {
+            // POSTOJ - PRZYJMOWANIE PASAZEROW (tylko gdy stacja otwarta)
+            while (czas_uplyniony < czas_postoju && !wymuszony_odjazd && bus_running && shm->stacja_otwarta) {
             // Odbieranie biletów 
             BiletMsg bilet;
             ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long),
@@ -181,7 +186,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         if (wymuszony_odjazd) {
             log_print(KOLOR_BUS, tag, ">>> WYMUSZONY ODJAZD (SIGUSR1)! PID=%d <<<", getpid());
         }
-
+    }
         // Zablokuj drzwi na czas odjazdu 
         semop(sem_id, &zablokuj_drzwi_n, 1);
         semop(sem_id, &zablokuj_drzwi_r, 1);

@@ -263,11 +263,9 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         // Sprawdzenie czy symulacja powinna sie zakonczyc
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s != (void *)-1) {
-            // Jesli dworzec zamkniety i brak pasazerow w trasie
-            if (!s->stacja_otwarta && 
-                s->pasazerow_w_trasie <= 0 && 
-                s->pasazerow_czeka <= 0) {
-                log_print(KOLOR_DYSP, "DYSP", "Wszyscy pasażerowie obsłużeni.");
+            // Koniec gdy stacja zamknieta i wszyscy w trasie rozwiezieni
+            if (!s->stacja_otwarta && s->pasazerow_w_trasie <= 0) {
+                log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety, wszyscy rozwiezieni - koncze.");
                 s->symulacja_aktywna = false;
                 shmdt(s);
                 break;

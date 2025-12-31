@@ -110,11 +110,18 @@ void proces_pasazer(int id_pas) {
 
         // OCZEKIWANIE NA AUTOBUS
     int sem_drzwi = czy_rower ? SEM_DOOR_ROWER : SEM_DOOR_NORMAL;
-    int proby = 0;
-    const int MAX_PROB = 200;  /* ~20 sekund max */
 
-    while (shm->stacja_otwarta && shm->symulacja_aktywna && proby < MAX_PROB) {
-        proby++;
+    // Czekaj dopoki symulacja aktywna
+    while (shm->symulacja_aktywna) {
+        // SIGUSR2 - dworzec zamkniety = nie mozna wsiasc, pasazer opuszcza dworzec
+        if (!shm->stacja_otwarta) {
+            log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam dworzec. PID=%d", getpid());
+            semop(sem_id, &shm_lock, 1);
+            shm->pasazerow_czeka--;
+            semop(sem_id, &shm_unlock, 1);
+            shmdt(shm);
+            exit(0);
+        }
 
         /* Sprawdź czy jest autobus */
         if (shm->bus_na_peronie && shm->aktualny_bus_pid > 0) {
@@ -158,12 +165,7 @@ void proces_pasazer(int id_pas) {
         }
     }
 
-        // REZYGNACJA
-    const char* powod = !shm->stacja_otwarta ? "dworzec zamknięty" : 
-                        !shm->symulacja_aktywna ? "koniec symulacji" : "timeout";
-    
-    log_print(KOLOR_PAS, tag, "Rezygnuje (%s). PID=%d", powod, getpid());
-
+    // Symulacja zakonczona
     semop(sem_id, &shm_lock, 1);
     shm->pasazerow_czeka--;
     semop(sem_id, &shm_unlock, 1);
