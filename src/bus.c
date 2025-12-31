@@ -53,7 +53,6 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     }
 
     // Operacje semaforowe 
-    struct sembuf zajmij_peron = {SEM_BUS_STOP, -1, 0};
     struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, 0};
     struct sembuf zablokuj_drzwi_n = {SEM_DOOR_NORMAL, -1, 0};
     struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, 0};
@@ -75,17 +74,41 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         // JAZDA NA PETLE
         int czas_dojazdu = losuj(8000, 15000);
         log_print(KOLOR_BUS, tag, "Jedzie na petle (%dms). PID=%d", czas_dojazdu, getpid());
-        msleep(czas_dojazdu);
+        
+        int pozostalo = czas_dojazdu;
+        while (pozostalo > 0 && bus_running) {
+            int czekaj = (pozostalo > 500) ? 500 : pozostalo;
+            msleep(czekaj);
+            pozostalo -= czekaj;
+            if (czy_zakonczyc(shm)) break;
+        }
 
         if (!bus_running || czy_zakonczyc(shm)) {
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
             break;
         }
         //ZAJĘCIE PERONU 
-        log_print(KOLOR_BUS, tag, "Czeka na wjazd na peron. PID=%d", getpid());
+        log_print(KOLOR_BUS, tag, "Czeka na peron. PID=%d", getpid());
 
-        if (semop(sem_id, &zajmij_peron, 1) == -1) {
-            if (errno == EINTR) continue;
+        // Non-blocking czekanie na peron (mozna przerwac)
+        struct sembuf zajmij_nowait = {SEM_BUS_STOP, -1, IPC_NOWAIT};
+        int proba_peronu = 0;
+        while (proba_peronu < 100 && bus_running) {
+            if (semop(sem_id, &zajmij_nowait, 1) == 0) break;
+            if (errno != EAGAIN) { perror("bus semop zajmij_peron"); break; }
+            if (czy_zakonczyc(shm)) {
+                log_print(KOLOR_BUS, tag, "Warunki zakonczenia podczas czekania - koncze. PID=%d", getpid());
+                goto koniec;
+            }
+            usleep(100000); // 100ms
+            proba_peronu++;
+        }
+        
+        if (proba_peronu >= 100) continue; // timeout, probuj ponownie
+
+        if (czy_zakonczyc(shm)) {
+            semop(sem_id, &zwolnij_peron, 1);
+            log_print(KOLOR_BUS, tag, "Warunki zakonczenia po zajeciu peronu - koncze. PID=%d", getpid());
             break;
         }
 
@@ -253,7 +276,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
     }
 
-    log_print(KOLOR_BUS, tag, "KONIEC. Kursów: %d, Przewiezionych: %d. PID=%d",
+    koniec:
+    log_print(KOLOR_BUS, tag, "KONIEC. Kursow: %d, Przewiezionych: %d. PID=%d",
               kursow, przewiezionych, getpid());
 
     shmdt(shm);
