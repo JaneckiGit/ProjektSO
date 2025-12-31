@@ -22,8 +22,10 @@ static void handler_bus(int sig) {
 
 void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     srand(time(NULL) ^ getpid());
+    
+    // Losowy czas trasy Ti dla tego autobusu (15-30 sekund)
+    int czas_trasy_Ti = losuj(15000, 30000);
 
-    //Konfiguracja sygnałów 
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handler_bus;
@@ -55,7 +57,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     int kursow = 0;
     int przewiezionych = 0;
 
-    //
+    log_print(KOLOR_BUS, tag, "Miejsca normalne: %d, Miejsca rowerowe: %d, Ti=%dms. PID=%d", 
+              pojemnosc, rowery, czas_trasy_Ti, getpid());
+
     while (bus_running && shm->symulacja_aktywna) {
         //Sprawdź czy jest sens kontynuować 
         if (!shm->stacja_otwarta && shm->pasazerow_w_trasie <= 0 && 
@@ -63,9 +67,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             break;
         }
 
-        //JAZDA NA PĘTLĘ 
-        int czas_dojazdu = losuj(2000, 4000);
-        log_print(KOLOR_BUS, tag, "Jedzie na pętlę (%dms). PID=%d", czas_dojazdu, getpid());
+        // JAZDA NA PETLE
+        int czas_dojazdu = losuj(8000, 15000);
+        log_print(KOLOR_BUS, tag, "Jedzie na petle (%dms). PID=%d", czas_dojazdu, getpid());
         msleep(czas_dojazdu);
 
         if (!bus_running || !shm->symulacja_aktywna) break;
@@ -223,10 +227,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         semop(sem_id, &odblokuj_drzwi_r, 1);
         semop(sem_id, &zwolnij_peron, 1);
 
-        //TRASA 
-        int czas_trasy = losuj(3000, 6000);
-        log_print(KOLOR_BUS, tag, "W trasie (%dms). PID=%d", czas_trasy, getpid());
-        msleep(czas_trasy);
+       // TRASA (staly czas Ti dla tego autobusu)
+        log_print(KOLOR_BUS, tag, "W trasie (%dms). PID=%d", czas_trasy_Ti, getpid());
+        msleep(czas_trasy_Ti);
 
         // Pasazerowie wysiadaja
         semop(sem_id, &shm_lock, 1);
