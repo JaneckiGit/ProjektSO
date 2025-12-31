@@ -1,4 +1,8 @@
-#pragma once
-#include "common.h"
+#ifndef PASAZER_H
+#define PASAZER_H
 
-void proces_pasazer(int id, int semid, int shmid, int msgid);
+void proces_pasazer(int id_pasazera);
+// void proces_dziecko(int id_pasazera);
+// void proces_rodzic(int id_pasazera, int idx_dziecka);
+
+#endif

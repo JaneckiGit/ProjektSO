@@ -1,0 +1,60 @@
+=== RAPORT SYMULACJI AUTOBUSU PODMIEJSKIEGO ===
+
+[23:57:34] [MAIN  ] START: N=3 P=10 R=3 T=5000
+[23:57:34] [DYSP  ] Dyspozytor rozpoczął pracę. PID=16567
+[23:57:34] [DYSP  ] >>> Sygnały: kill -SIGUSR1 16567 | kill -SIGUSR2 16567 <<<
+[23:57:34] [KASA  ] Otwarcie. PID=16568
+[23:57:34] [KASA  ] Otwarcie kasy. PID=16568
+[23:57:34] [BUS   ] Uruchomiony BUS 1. PID=16569, Pojemność=10, Rowery=3
+[23:57:34] [BUS 1 ] Jedzie na pętlę (2534ms). PID=16569
+[23:57:34] [KASA  ] Okienko 1 otwarte. TID=281473527521760
+[23:57:34] [KASA  ] Okienko 2 otwarte. TID=281473519129056
+[23:57:34] [BUS   ] Uruchomiony BUS 2. PID=16572, Pojemność=10, Rowery=3
+[23:57:34] [BUS 2 ] Jedzie na pętlę (3772ms). PID=16572
+[23:57:34] [BUS   ] Uruchomiony BUS 3. PID=16573, Pojemność=10, Rowery=3
+[23:57:34] [BUS 3 ] Jedzie na pętlę (2898ms). PID=16573
+[23:57:34] [MAIN  ] Wszystkie procesy uruchomione.
+[23:57:34] [PAS 0 ] Przybył. PID=16575, Wiek=9, VIP=0, Rower=1
+[23:57:34] [PAS 0 ] Czeka w kolejce do kasy. PID=16575
+[23:57:34] [KASA  ] Zarejestrowano PAS 0 (PID=16575, wiek=9)
+[23:57:34] [PAS 0 ] Ma bilet. Czeka na autobus. PID=16575
+[23:57:35] [PAS 1 ] Przybył. PID=16579, Wiek=39, VIP=0, Rower=0
+[23:57:35] [PAS 1 ] Czeka w kolejce do kasy. PID=16579
+[23:57:35] [KASA  ] Zarejestrowano PAS 1 (PID=16579, wiek=39)
+[23:57:35] [PAS 1 ] Ma bilet. Czeka na autobus. PID=16579
+[23:57:36] [BUS 1 ] Czeka na wjazd na peron. PID=16569
+[23:57:36] [BUS 1 ] [Kurs #1] Na peronie. PID=16569, Miejsca: 0/10, Rowery: 0/3
+[23:57:37] [PAS 2 ] Przybył. PID=16624, Wiek=50, VIP=0, Rower=0
+[23:57:37] [PAS 2 ] Czeka w kolejce do kasy. PID=16624
+[23:57:37] [BUS 1 ] Wsiadł PAS 0 (PID=16575, wiek=9) +rower. Miejsca: 1/10, Rowery: 1/3
+[23:57:37] [BUS 1 ] Wsiadł PAS 1 (PID=16579, wiek=39). Miejsca: 2/10, Rowery: 1/3
+[23:57:37] [BUS 3 ] Czeka na wjazd na peron. PID=16573
+[23:57:37] [KASA  ] Zarejestrowano PAS 2 (PID=16624, wiek=50)
+[23:57:37] [PAS 2 ] Ma bilet. Czeka na autobus. PID=16624
+[23:57:37] [BUS 1 ] Wsiadł PAS 2 (PID=16624, wiek=50). Miejsca: 3/10, Rowery: 1/3
+[23:57:38] [BUS 2 ] Czeka na wjazd na peron. PID=16572
+[23:57:39] [PAS 3 ] Przybył. PID=16634, Wiek=69, VIP=0, Rower=0
+[23:57:39] [PAS 3 ] Czeka w kolejce do kasy. PID=16634
+[23:57:39] [KASA  ] Zarejestrowano PAS 3 (PID=16634, wiek=69)
+[23:57:39] [PAS 3 ] Ma bilet. Czeka na autobus. PID=16634
+[23:57:39] [BUS 1 ] Wsiadł PAS 3 (PID=16634, wiek=69). Miejsca: 4/10, Rowery: 1/3
+[23:57:39] [BUS 3 ] KONIEC. Kursów: 0, Przewiezionych: 0. PID=16573
+[23:57:39] [BUS 2 ] KONIEC. Kursów: 0, Przewiezionych: 0. PID=16572
+[23:57:39] [BUS 1 ] ODJAZD! Zabrał 4 osób. W trasie: 4. PID=16569
+[23:57:39] [DYSP  ] Zamykanie symulacji...
+[23:57:39] [PAS 4 ] Przybył. PID=16636, Wiek=66, VIP=0, Rower=1
+[23:57:39] [BUS 1 ] W trasie (5056ms). PID=16569
+[23:57:39] [MAIN  ] === PODSUMOWANIE ===
+[23:57:39] [PAS 4 ] Czeka w kolejce do kasy. PID=16636
+[23:57:39] [MAIN  ] Pasażerów wygenerowanych: 5
+[23:57:39] [MAIN  ] Biletów sprzedanych: 5
+[23:57:39] [MAIN  ] Pasażerów zarejestrowanych: 5
+[23:57:39] [BUS 1 ] Pasażerowie wysiedli (4). W trasie: 0. PID=16569
+[23:57:39] [BUS 1 ] KONIEC. Kursów: 1, Przewiezionych: 4. PID=16569
+[23:57:39] [KASA  ] Okienko 2 zamknięte. Obsłużono: 11
+[23:57:39] [KASA  ] Okienko 1 zamknięte. Obsłużono: 11
+[23:57:39] [KASA  ] Zamknięcie kasy. PID=16568
+[23:57:39] [MAIN  ] Symulacja zakończona.
+[23:57:40] [KASA  ] Zarejestrowano PAS 4 (PID=16636, wiek=66)
+[23:57:40] [PAS 4 ] Ma bilet. Czeka na autobus. PID=16636
+[23:57:40] [PAS 4 ] Rezygnuje (dworzec zamknięty). PID=16636

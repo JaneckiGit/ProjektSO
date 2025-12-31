@@ -1,78 +1,122 @@
- //common.h - Plik nagłówkowy z definicjami współdzielonymi
- 
+// common.h - Wspólne definicje i struktury
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/types.h>
+#include <stdio.h> 
+#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <signal.h>
 #include <time.h>
 #include <errno.h>
 #include <string.h>
-#include <stdbool.h>
+#include <stdarg.h>
+#include <fcntl.h>
+#include <pthread.h>
 
-// --- KONFIGURACJA SYMULACJI ---
-#define MAX_PASAZEROW_TOTAL 100 // Całkowita liczba pasażerów do wygenerowania (zgodnie z wymaganiami)
-#define LICZBA_AUTOBUSOW 5      // Łączna liczba autobusów [cite: 432]
-#define POJEMNOSC_AUTOBUSU 10   // P [cite: 427]
-#define MIEJSCA_ROWEROWE 3      // R [cite: 427]
-#define CZAS_ODJAZDU 10         // T (sekundy) [cite: 429]
-#define LIMIT_VIP 1             // Szansa na VIP w % (~1% jak w wymaganiach)
+// Stałe
+#define MAX_BUSES           50
+#define MAX_CAPACITY        200
+#define MAX_REGISTERED      1000
+#define MAX_CZEKAJACE_DZIECI 100
+#define MAX_KASY            10
+#define DEFAULT_K           1
 
-// (FTOK klucze nieużywane)
+// Kolory ANSI
+#define KOLOR_RESET   "\033[0m"
+#define KOLOR_MAIN    "\033[1;37m"
+#define KOLOR_KASA    "\033[1;32m"
+#define KOLOR_BUS     "\033[1;33m"
+#define KOLOR_DYSP    "\033[1;31m"
+#define KOLOR_PAS     "\033[1;36m"
+#define KOLOR_STAT    "\033[1;35m"
 
-// --- SEMAFORY (INDEKSY) ---
-#define SEM_MUTEX 0         // Ochrona pamięci dzielonej
-#define SEM_PLATFORM 1      // Tylko jeden autobus na stanowisku
-#define SEM_DOOR_PED 2      // Wejście dla pasażerów z bagażem podręcznym
-#define SEM_DOOR_BIKE 3     // Wejście dla pasażerów z rowerami
-#define SEM_KASA 4          // Kolejka do kasy
+// Indeksy semaforów
+#define SEM_DOOR_NORMAL  0
+#define SEM_DOOR_ROWER   1
+#define SEM_BUS_STOP     2
+#define SEM_LOG          3
+#define SEM_SHM          4
+#define SEM_KASA_BASE    5
+#define SEM_COUNT_BASE   5
 
-// --- TYPY KOMUNIKATÓW ---
-#define MSG_LOG 1           // Typ komunikatu do logowania
-
-// --- STRUKTURY DANYCH ---
-
-// Pamięć dzielona - stan systemu
+// Struktura dziecka czekającego na rodzica
 typedef struct {
-    int aktualny_autobus_pid;
-    int pasazerow_w_autobusie;       // Zajęte miejsca (z dziećmi liczy się 2 miejsca/osoba)
-    int liczba_osob_w_autobusie;     // Rzeczywista liczba osób (każdy pasażer=1, nawet z dzieckiem)
-    int rowerow_w_autobusie;
-    bool stacja_otwarta;
-    bool autobus_na_stanowisku;
-    int licznik_biletow;
-    int total_passengers_generated;  // Całkowita liczba wygenerowanych
-    int passengers_waiting;          // Czekający na dworcu
-    int passengers_in_transit;       // W autobusach
-} SharedState;
+    pid_t pid_dziecka;
+    int id_dziecka;
+    int wiek_dziecka;
+    bool ma_rodzica;
+    pid_t pid_rodzica;
+} CzekajaceDziecko;
 
-// Struktura komunikatu do logowania (raport)
+// Pamięć dzielona
+typedef struct {
+    int param_N;
+    int param_P;
+    int param_R;
+    int param_T;
+    int param_K;
+    bool stacja_otwarta;
+    bool symulacja_aktywna;
+    
+    pid_t aktualny_bus_pid;
+    int aktualny_bus_id;
+    int miejsca_zajete;
+    int rowery_zajete;
+    bool bus_na_peronie;
+    
+    int total_pasazerow;
+    int pasazerow_w_trasie;
+    int pasazerow_czeka;
+    int sprzedanych_biletow;
+    int vip_count;
+    int total_przewiezionych;
+    int odrzuconych_bez_biletu;
+    int obsluzonych_kasa[MAX_KASY];
+
+    pid_t registered_pids[MAX_REGISTERED];
+    int registered_wiek[MAX_REGISTERED];
+    int registered_count;
+    
+    // Dzieci czekające na rodziców
+    CzekajaceDziecko dzieci[MAX_CZEKAJACE_DZIECI];
+    int dzieci_count;
+} SharedData;
+
+// Wiadomość - bilet
 typedef struct {
     long mtype;
-    char text[256];
-} LogMessage;
+    pid_t pid_pasazera;
+    int id_pasazera;
+    int wiek;
+    int czy_rower;
+    int czy_vip;
+    int ma_bilet;
+    // Dane dziecka (jeśli jest)
+    pid_t pid_dziecka;
+    int id_dziecka;
+    int wiek_dziecka;
+} BiletMsg;
 
-// Kolory do terminala dla czytelności
-#define COLOR_RESET "\033[0m"
-#define COLOR_BUS "\033[1;33m"      // Żółty
-#define COLOR_PASS "\033[0;36m"     // Cyjan
-#define COLOR_KASA "\033[0;32m"     // Zielony
-#define COLOR_DISP "\033[1;31m"     // Czerwony
-#define COLOR_INFO "\033[0;35m"     // Fioletowy (komunikaty statusu)
+// Zmienne IPC
+extern int sem_id;
+extern int shm_id;
+extern int msg_id;
 
-// --- PROTOTYPY FUNKCJI NARZĘDZIOWYCH ---
-void send_log(int msgid, const char *format, ...);
-void sem_p(int semid, int sem_num);
-void sem_v(int semid, int sem_num);
-int random_range(int min, int max);
-void get_timestamp(char *buffer);
+// Funkcje pomocnicze
+void log_print(const char* kolor, const char* tag, const char* fmt, ...);
+int losuj(int min, int max);
+void msleep(int ms);
+void get_timestamp(char* buf, size_t size);
+int init_ipc_client(void);  // dla procesow potomnych
 
 #endif

@@ -25,6 +25,7 @@ ProjektSO/
 │   ├── bus.c         # Proces autobusu/kierowcy
 │   ├── dyspozytor.c  # Proces dyspozytora
 │   ├── kasa.c        # Proces kasy biletowej
+│   ├── utils.c       # 
 │   └── pasazer.c     # Proces pasażera
 ├── include/          # Pliki nagłówkowe
 │   ├── common.h      # Definicje wspólne(definicje etc.)
