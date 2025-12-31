@@ -27,19 +27,16 @@ void proces_pasazer(int id_pas) {
     int czy_vip = (losuj(1, 100) == 1);     /* 1% VIP */
     int czy_rower = (losuj(1, 100) <= 15);  /* 15% z rowerem */
     int wiek_dziecka = 0;
-    int ile_miejsc = 1;
 
         // Dziecko <8 lat musi miec opiekuna
     if (wiek < 8) {
             // To jest dziecko - musi byc z rodzicem
         wiek_dziecka = wiek;
         wiek = losuj(25, 50);  /* Rodzic */
-        ile_miejsc = 2;
         czy_rower = 0;  /* Z dzieckiem bez roweru */
     } else if (wiek >= 25 && wiek <= 50 && losuj(1, 100) <= 20) {
             // Dorosly moze miec dziecko (20% szans)
         wiek_dziecka = losuj(1, 7);
-        ile_miejsc = 2;
         czy_rower = 0;
     }
 
@@ -173,4 +170,15 @@ void proces_pasazer(int id_pas) {
 
     shmdt(shm);
     exit(0);
+}
+int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        fprintf(stderr, "Uzycie: %s <typ> <id>\n", argv[0]);
+        exit(1);
+    }
+    
+    if (init_ipc_client() == -1) exit(1);
+    
+    proces_pasazer(atoi(argv[2]));
+    return 0;
 }

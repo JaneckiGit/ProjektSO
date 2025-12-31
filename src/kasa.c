@@ -19,25 +19,31 @@ static void handler_kasa(int sig) {
 }
 
 // Watek kas
-static void* okienko_func(void* arg) {
-    OkienkoArg* okno = (OkienkoArg*)arg;
+static void* kasa_watek(void* arg) {
+    KasaArg* kasa = (KasaArg*)arg;
     char tag[16];
-    snprintf(tag, sizeof(tag), "KASA");
+    snprintf(tag, sizeof(tag), "KASA %d", kasa->numer);
 
-    log_print(KOLOR_KASA, tag, "Okienko %d otwarte. TID=%lu",
-              okno->numer, (unsigned long)pthread_self());
+    log_print(KOLOR_KASA, tag, "Otwarta. TID=%lu", (unsigned long)pthread_self());
 
     while (kasa_running) {
-        //Symulacja pracy okienka 
         pthread_mutex_lock(&kasa_mutex);
-        okno->obsluzonych++;
+        while (kasa_running) {
+            pthread_cond_wait(&kasa_cond, &kasa_mutex);
+            if (!kasa_running) break;
+        }
         pthread_mutex_unlock(&kasa_mutex);
-
-        usleep(500000);  
     }
 
-    log_print(KOLOR_KASA, tag, "Okienko %d zamknięte. Obsłużono: %d",
-              okno->numer, okno->obsluzonych);
+    SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
+    if (shm != (void *)-1) {
+        int obsluzonych = shm->obsluzonych_kasa[kasa->numer - 1];
+        log_print(KOLOR_KASA, tag, "Zamknieta. Obsluzono: %d. TID=%lu", 
+                  obsluzonych, (unsigned long)pthread_self());
+        shmdt(shm);
+    } else {
+        log_print(KOLOR_KASA, tag, "Zamknieta. TID=%lu", (unsigned long)pthread_self());
+    }
 
     return NULL;
 }

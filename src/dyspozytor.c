@@ -1,9 +1,10 @@
 // dyspozytor.c - Glowny modul zarzadzajacy symulacja
 #include "common.h"
 #include "dyspozytor.h"
+#include "pasazer.h"
 #include "bus.h"
 #include "kasa.h"
-#include "pasazer.h"
+
 
 // PID-y procesow potomnych
 static pid_t pid_kasa = -1;
@@ -165,12 +166,15 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             continue;
         }
         if (pids_busy[i] == 0) {
-            /* Proces potomny - autobus */
-            proces_autobus(i + 1, P, R, T);
-            exit(0);
+            char arg_id[16], arg_p[16], arg_r[16], arg_t[16];
+            snprintf(arg_id, sizeof(arg_id), "%d", i + 1);
+            snprintf(arg_p, sizeof(arg_p), "%d", P);
+            snprintf(arg_r, sizeof(arg_r), "%d", R);
+            snprintf(arg_t, sizeof(arg_t), "%d", T);
+            execl("./bin/autobus", "autobus", arg_id, arg_p, arg_r, arg_t, NULL);
+            perror("execl autobus"); exit(1);
         }
-        log_print(KOLOR_BUS, "BUS", "Uruchomiony BUS %d. PID=%d, Pojemność=%d, Rowery=%d",
-                  i + 1, pids_busy[i], P, R);
+        log_print(KOLOR_BUS, "BUS", "BUS %d uruchomiony. PID=%d", i+1, pids_busy[i]);
     }
 
     log_print(KOLOR_MAIN, "MAIN", "Wszystkie procesy uruchomione.");
@@ -201,8 +205,10 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             // Tworzenie nowego pasazera
             pid_t pas = fork();
             if (pas == 0) {
-                proces_pasazer(id_pas);
-                exit(0);
+                char arg_id[16];
+                snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
+                execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);
+                exit(1);
             }
             id_pas++;
 

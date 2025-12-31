@@ -1,86 +1,133 @@
-# Makefile - Projekt SO 2025/2026 - Autobus Podmiejski
-# 
-# Użycie:
-#   make        - kompilacja
-#   make run    - uruchomienie
-#   make clean  - czyszczenie
-#   make test   - uruchomienie testów
+# # Makefile - Projekt SO 2025/2026 - Autobus Podmiejski
+# # 
+# # Uzycie:
+# #   make        - kompilacja wszystkiego
+# #   make run    - uruchomienie (domyslne parametry)
+# #   make clean  - czyszczenie
+
+# CC = gcc
+# CFLAGS = -Wall -Wextra -pthread -I./include
+# LDFLAGS = -pthread
+
+# SRC_DIR = src
+# OBJ_DIR = obj
+# BIN_DIR = bin
+
+# # Glowny program
+# TARGET = $(BIN_DIR)/autobus_main
+
+# # Osobne programy dla exec()
+# TARGET_BUS = $(BIN_DIR)/autobus
+# TARGET_KASA = $(BIN_DIR)/kasa
+# TARGET_PAS = $(BIN_DIR)/pasazer
+
+# # Regula domyslna - kompiluj wszystko
+# all: directories $(TARGET) $(TARGET_BUS) $(TARGET_KASA) $(TARGET_PAS)
+# 	@echo ""
+# 	@echo "=== Kompilacja zakonczona ==="
+# 	@echo "Glowny program: $(TARGET)"
+# 	@echo "Programy exec:  $(TARGET_BUS), $(TARGET_KASA), $(TARGET_PAS)"
+# 	@echo ""
+# 	@echo "Uruchom: ./$(TARGET) [N] [P] [R] [T] [K]"
+# 	@echo "  N - liczba autobusow (domyslnie 3)"
+# 	@echo "  P - pojemnosc autobusu (domyslnie 10)"
+# 	@echo "  R - miejsca na rowery (domyslnie 3)"
+# 	@echo "  T - czas postoju w ms (domyslnie 5000)"
+# 	@echo "  K - liczba kas (domyslnie 2)"
+
+# # Tworzenie katalogow
+# directories:
+# 	@mkdir -p $(OBJ_DIR) $(BIN_DIR)
+
+# # Glowny program
+# $(TARGET): $(SRC_DIR)/main.c $(SRC_DIR)/dyspozytor.c $(SRC_DIR)/utils.c
+# 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+# # Program autobusu (dla exec)
+# $(TARGET_BUS): $(SRC_DIR)/bus.c $(SRC_DIR)/utils.c
+# 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+# # Program kasy (dla exec) - kazda kasa to osobny proces
+# $(TARGET_KASA): $(SRC_DIR)/kasa.c $(SRC_DIR)/utils.c
+# 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+# # Program pasazera (dla exec)
+# $(TARGET_PAS): $(SRC_DIR)/pasazer.c $(SRC_DIR)/utils.c
+# 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+# # Uruchomienie z domyslnymi parametrami
+# run: all
+# 	./$(TARGET)
+
+# # Uruchomienie z parametrami
+# run-custom: all
+# 	./$(TARGET) 3 10 3 5000 2
+
+# # Testy
+# test: all
+# 	@chmod +x tests/test.sh
+# 	@./tests/test.sh
+
+# # Czyszczenie
+# clean:
+# 	rm -rf $(OBJ_DIR) $(BIN_DIR) raport.txt
+
+# # Czyszczenie zasobow IPC
+# clean-ipc:
+# 	@echo "Czyszczenie zasobow IPC..."
+# 	@ipcs -s | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -s {} 2>/dev/null || true
+# 	@ipcs -m | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -m {} 2>/dev/null || true
+# 	@ipcs -q | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -q {} 2>/dev/null || true
+# 	@echo "Gotowe."
+
+# .PHONY: all directories run run-custom test clean clean-ipc
 
 CC = gcc
 CFLAGS = -Wall -Wextra -pthread -I./include
 LDFLAGS = -pthread
 
 SRC_DIR = src
-OBJ_DIR = obj
 BIN_DIR = bin
 
-TARGET = $(BIN_DIR)/autobus
+# Programy
+TARGET = $(BIN_DIR)/autobus_main
+TARGET_BUS = $(BIN_DIR)/autobus
 TARGET_KASA = $(BIN_DIR)/kasa
+TARGET_PAS = $(BIN_DIR)/pasazer
 
-# Pliki źródłowe
-SRCS = $(SRC_DIR)/main.c \
-       $(SRC_DIR)/dyspozytor.c \
-       $(SRC_DIR)/bus.c \
-       $(SRC_DIR)/kasa.c \
-       $(SRC_DIR)/pasazer.c \
-       $(SRC_DIR)/utils.c
+# Regula domyslna
+all: directories $(TARGET) $(TARGET_BUS) $(TARGET_KASA) $(TARGET_PAS)
+	@echo "Kompilacja zakonczona"
+	@echo "Uruchom: ./$(TARGET) [N] [P] [R] [T] [K]"
 
-# Pliki obiektowe
-OBJS = $(OBJ_DIR)/main.o \
-       $(OBJ_DIR)/dyspozytor.o \
-       $(OBJ_DIR)/bus.o \
-       $(OBJ_DIR)/kasa.o \
-       $(OBJ_DIR)/pasazer.o \
-       $(OBJ_DIR)/utils.o
-
-# Reguła domyślna
-all: directories $(TARGET) $(TARGET_KASA)
-	@echo "Kompilacja zakończona: $(TARGET)"
-	@echo "Uruchom: ./$(TARGET) [N] [P] [R] [T]"
-
-# Tworzenie katalogów
 directories:
-	@mkdir -p $(OBJ_DIR) $(BIN_DIR)
+	@mkdir -p $(BIN_DIR)
 
-# Linkowanie
-$(TARGET): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+# Glowny program (dyspozytor)
+$(TARGET): $(SRC_DIR)/main.c $(SRC_DIR)/dyspozytor.c $(SRC_DIR)/utils.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-# Kompilacja plików .c do .o
+# Autobus (osobny program dla exec)
+$(TARGET_BUS): $(SRC_DIR)/bus.c $(SRC_DIR)/utils.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+# Kasa (osobny program dla exec)
 $(TARGET_KASA): $(SRC_DIR)/kasa.c $(SRC_DIR)/utils.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-# Zależności od nagłówków
-$(OBJ_DIR)/main.o: $(SRC_DIR)/main.c include/common.h include/dyspozytor.h
-$(OBJ_DIR)/dyspozytor.o: $(SRC_DIR)/dyspozytor.c include/common.h include/dyspozytor.h include/bus.h include/kasa.h include/pasazer.h
-$(OBJ_DIR)/bus.o: $(SRC_DIR)/bus.c include/common.h include/bus.h
-$(OBJ_DIR)/kasa.o: $(SRC_DIR)/kasa.c include/common.h include/kasa.h
-$(OBJ_DIR)/pasazer.o: $(SRC_DIR)/pasazer.c include/common.h include/pasazer.h
-$(OBJ_DIR)/utils.o: $(SRC_DIR)/utils.c include/common.h
+# Pasazer (osobny program dla exec)
+$(TARGET_PAS): $(SRC_DIR)/pasazer.c $(SRC_DIR)/utils.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-# Uruchomienie
 run: all
 	./$(TARGET)
 
-# Uruchomienie z parametrami
-run-custom: all
-	./$(TARGET) 3 10 3 5000
-
-# Testy
-test: all
-	@chmod +x tests/test.sh
-	@./tests/test.sh
-
-# Czyszczenie
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR) raport.txt
+	rm -rf $(BIN_DIR) raport.txt
 
-# Czyszczenie zasobów IPC (jeśli zostały)
 clean-ipc:
-	@echo "Czyszczenie zasobów IPC..."
 	@ipcs -s | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -s {} 2>/dev/null || true
 	@ipcs -m | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -m {} 2>/dev/null || true
 	@ipcs -q | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -q {} 2>/dev/null || true
-	@echo "Gotowe."
 
-.PHONY: all directories run run-custom test clean clean-ipc
+.PHONY: all directories run clean clean-ipc

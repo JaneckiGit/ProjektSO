@@ -114,7 +114,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
                 semop(sem_id, &shm_lock, 1);
 
-                if (shm->miejsca_zajete + bilet.ile_miejsc > pojemnosc) {
+                int ile_osob = (bilet.wiek_dziecka > 0) ? 2 : 1;
+                
+                if (shm->miejsca_zajete + ile_osob > pojemnosc) {
                     akceptuj = false;
                     snprintf(powod, sizeof(powod), "brak miejsc (%d/%d)",
                              shm->miejsca_zajete, pojemnosc);
@@ -126,9 +128,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 }
 
                 if (akceptuj) {
-                    shm->miejsca_zajete += bilet.ile_miejsc;
+                    shm->miejsca_zajete += ile_osob;
                     if (bilet.czy_rower) shm->rowery_zajete++;
-                    pasazerow_w_kursie += bilet.ile_miejsc;
+                    pasazerow_w_kursie += ile_osob;
 
                     semop(sem_id, &shm_unlock, 1);
 
@@ -214,4 +216,15 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
     shmdt(shm);
     exit(0);
+}
+int main(int argc, char *argv[]) {
+    if (argc < 5) {
+        fprintf(stderr, "Uzycie: %s <bus_id> <pojemnosc> <rowery> <czas_postoju>\n", argv[0]);
+        exit(1);
+    }
+    
+    if (init_ipc_client() == -1) exit(1);
+    
+    proces_autobus(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]));
+    return 0;
 }
