@@ -16,6 +16,12 @@ static void handler_bus(int sig) {
         bus_running = 0;
     }
 }
+// Sprawdza czy autobus powinien zakonczyc prace
+static int czy_zakonczyc(SharedData *shm) {
+    if (!shm->symulacja_aktywna) return 1;
+    if (!shm->stacja_otwarta && shm->pasazerow_w_trasie <= 0) return 1;
+    return 0;
+}
 
 
 //proces_autobus - Główna funkcja autobusu
@@ -60,10 +66,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     log_print(KOLOR_BUS, tag, "Miejsca normalne: %d, Miejsca rowerowe: %d, Ti=%dms. PID=%d", 
               pojemnosc, rowery, czas_trasy_Ti, getpid());
 
-    while (bus_running && shm->symulacja_aktywna) {
-        //Sprawdź czy jest sens kontynuować 
-        if (!shm->stacja_otwarta && shm->pasazerow_w_trasie <= 0 && 
-            shm->pasazerow_czeka <= 0) {
+    while (bus_running) {
+        if (czy_zakonczyc(shm)) {
+            log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
             break;
         }
 
@@ -72,8 +77,10 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         log_print(KOLOR_BUS, tag, "Jedzie na petle (%dms). PID=%d", czas_dojazdu, getpid());
         msleep(czas_dojazdu);
 
-        if (!bus_running || !shm->symulacja_aktywna) break;
-
+        if (!bus_running || czy_zakonczyc(shm)) {
+            log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
+            break;
+        }
         //ZAJĘCIE PERONU 
         log_print(KOLOR_BUS, tag, "Czeka na wjazd na peron. PID=%d", getpid());
 
@@ -238,6 +245,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         semop(sem_id, &shm_unlock, 1);
 
         log_print(KOLOR_BUS, tag, "Pasazerowie wysiedli (%d). PID=%d", pasazerow_w_kursie, getpid());
+
+        // Jesli stacja zamknieta i pusty kurs - koncz
+        if (pasazerow_w_kursie == 0 && !shm->stacja_otwarta) {
+            log_print(KOLOR_BUS, tag, "Stacja zamknieta, pusty kurs - koncze. PID=%d", getpid());
+            break;
+        }
     }
 
     log_print(KOLOR_BUS, tag, "KONIEC. Kursów: %d, Przewiezionych: %d. PID=%d",
