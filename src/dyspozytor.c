@@ -73,6 +73,33 @@ static void shutdown_children(void) {
     while (wait(NULL) > 0);
 }
 
+// Zapisz raport koncowy do pliku
+static void zapisz_raport_koncowy(SharedData *shm) {
+    int fd = open("raport.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd == -1) return;
+
+    char buf[1024];
+    int len = snprintf(buf, sizeof(buf),
+        "\n========================================\n"
+        "       RAPORT KONCOWY SYMULACJI\n"
+        "========================================\n"
+        "Pasazerow: %d\n"
+        "Przewiezionych: %d\n"
+        "Biletow: %d\n"
+        "VIP: %d\n"
+        "========================================\n",
+        shm->total_pasazerow, shm->total_przewiezionych,
+        shm->sprzedanych_biletow, shm->vip_count);
+    write(fd, buf, len);
+
+    for (int i = 0; i < shm->param_K; i++) {
+        len = snprintf(buf, sizeof(buf), "KASA %d obsluzyla: %d pasazerow\n", 
+                       i + 1, shm->obsluzonych_kasa[i]);
+        write(fd, buf, len);
+    }
+    close(fd);
+}
+
 // proces_dyspozytor - Glowna funkcja dyspozytora
 void proces_dyspozytor(int N, int P, int R, int T, int K) {
     srand(time(NULL) ^ getpid());
@@ -283,21 +310,36 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     log_print(KOLOR_DYSP, "DYSP", "Zamykanie symulacji...");
 
     // Oznacz koniec symulacji
-    SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
+SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
     if (s != (void *)-1) {
         s->symulacja_aktywna = false;
         s->stacja_otwarta = false;
-        
-        log_print(KOLOR_MAIN, "MAIN", "=== PODSUMOWANIE ===");
-        log_print(KOLOR_MAIN, "MAIN", "Pasażerów wygenerowanych: %d", s->total_pasazerow);
-        log_print(KOLOR_MAIN, "MAIN", "Biletów sprzedanych: %d", s->sprzedanych_biletow);
-        log_print(KOLOR_MAIN, "MAIN", "Pasażerów zarejestrowanych: %d", s->registered_count);
-        
         shmdt(s);
     }
 
-    shutdown_children();
-    cleanup_ipc();
+    log_print(KOLOR_DYSP, "DYSP", "Czekam na zakonczenie...");
+    usleep(500000);
 
-    log_print(KOLOR_MAIN, "MAIN", "Symulacja zakończona.");
+    shutdown_children();
+
+    // Podsumowanie
+    s = (SharedData *)shmat(shm_id, NULL, 0);
+    if (s != (void *)-1) {
+        log_print(KOLOR_STAT, "STAT", "========================================");
+        log_print(KOLOR_STAT, "STAT", "PODSUMOWANIE");
+        log_print(KOLOR_STAT, "STAT", "========================================");
+        log_print(KOLOR_STAT, "STAT", "Pasazerow: %d", s->total_pasazerow);
+        log_print(KOLOR_STAT, "STAT", "Przewiezionych: %d", s->total_przewiezionych);
+        log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
+        log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
+        for (int i = 0; i < s->param_K; i++) {
+            log_print(KOLOR_STAT, "STAT", "KASA %d: %d", i+1, s->obsluzonych_kasa[i]);
+        }
+        log_print(KOLOR_STAT, "STAT", "========================================");
+        zapisz_raport_koncowy(s);
+        shmdt(s);
+    }
+
+    cleanup_ipc();
+    log_print(KOLOR_MAIN, "MAIN", "Koniec.");
 }

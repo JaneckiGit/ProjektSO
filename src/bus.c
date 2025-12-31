@@ -214,14 +214,13 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         log_print(KOLOR_BUS, tag, "W trasie (%dms). PID=%d", czas_trasy, getpid());
         msleep(czas_trasy);
 
-        // Pasażerowie wysiadają 
+        // Pasazerowie wysiadaja
         semop(sem_id, &shm_lock, 1);
         shm->pasazerow_w_trasie -= pasazerow_w_kursie;
-        int pozostalo = shm->pasazerow_w_trasie;
+        shm->total_przewiezionych += pasazerow_w_kursie;
         semop(sem_id, &shm_unlock, 1);
 
-        log_print(KOLOR_BUS, tag, "Pasażerowie wysiedli (%d). W trasie: %d. PID=%d",
-                  pasazerow_w_kursie, pozostalo, getpid());
+        log_print(KOLOR_BUS, tag, "Pasazerowie wysiedli (%d). PID=%d", pasazerow_w_kursie, getpid());
     }
 
     log_print(KOLOR_BUS, tag, "KONIEC. Kursów: %d, Przewiezionych: %d. PID=%d",
