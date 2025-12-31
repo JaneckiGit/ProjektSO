@@ -131,16 +131,16 @@ void proces_pasazer(int id_pas) {
             if (semop(sem_id, &wejdz, 1) == 0) {
                 /* W drzwiach - sprawdź czy autobus nadal jest */
                 if (shm->aktualny_bus_pid > 0) {
-                    /* Przygotuj bilet */
                     BiletMsg bilet;
-                    bilet.mtype = shm->aktualny_bus_pid;
+                    memset(&bilet, 0, sizeof(bilet));
+                    bilet.mtype = czy_vip ? shm->aktualny_bus_pid : (shm->aktualny_bus_pid + 1000000);//VIP ma inny typ priorytetowy
                     bilet.pid_pasazera = getpid();
                     bilet.id_pasazera = id_pas;
                     bilet.wiek = wiek;
                     bilet.wiek_dziecka = wiek_dziecka;
                     bilet.czy_rower = czy_rower;
                     bilet.czy_vip = czy_vip;
-
+                    bilet.ma_bilet = 1;
                     /* Wyślij bilet */
                     if (msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), 0) == 0) {
                         /* Aktualizacja */
