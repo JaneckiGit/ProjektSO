@@ -259,7 +259,13 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
        // TRASA (staly czas Ti dla tego autobusu)
         log_print(KOLOR_BUS, tag, "W trasie (%dms). PID=%d", czas_trasy_Ti, getpid());
-        msleep(czas_trasy_Ti);
+        
+        int pozostalo_trasa = czas_trasy_Ti;
+        while (pozostalo_trasa > 0 && bus_running) {
+            int czekaj = (pozostalo_trasa > 500) ? 500 : pozostalo_trasa;
+            msleep(czekaj);
+            pozostalo_trasa -= czekaj;
+        }
 
         // Pasazerowie wysiadaja
         semop(sem_id, &shm_lock, 1);
