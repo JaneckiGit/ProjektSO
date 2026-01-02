@@ -240,9 +240,10 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 }
                 usleep(30000);
             } else {
-                struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT};
-                struct sembuf wyjdz = {sem_drzwi, 1, 0};
-
+                // struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT};
+                // struct sembuf wyjdz = {sem_drzwi, 1, 0};
+                struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT | SEM_UNDO};
+                struct sembuf wyjdz = {sem_drzwi, 1, SEM_UNDO};
                 if (semop(sem_id, &wejdz, 1) == 0) {
                     if (shm->aktualny_bus_pid > 0) {
                         if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
@@ -278,8 +279,11 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         int K = shm->param_K;
         int numer_kasy = losuj(1, K);
         int sem_kasa = SEM_KASA_BASE + (numer_kasy - 1);
-        struct sembuf zajmij = {sem_kasa, -1, 0};
-        struct sembuf zwolnij = {sem_kasa, 1, 0};
+        // struct sembuf zajmij = {sem_kasa, -1, 0};
+        // struct sembuf zwolnij = {sem_kasa, 1, 0};
+
+        struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+        struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
         char tag_kasa[16];
         snprintf(tag_kasa, sizeof(tag_kasa), "KASA %d", numer_kasy);
@@ -453,8 +457,11 @@ void proces_rodzic(int id_pas, int idx_dziecka) {
     int wiek = losuj(25, 50);
     int czy_vip = (losuj(1, 100) == 1);
 
-    struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
+    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+
+    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
     semop(sem_id, &shm_lock, 1);
     shm->total_pasazerow++;

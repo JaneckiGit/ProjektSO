@@ -53,11 +53,16 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     }
 
     // Operacje semaforowe 
-    struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, 0};
-    struct sembuf zablokuj_drzwi_n = {SEM_DOOR_NORMAL, -1, 0};
-    struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, 0};
-    struct sembuf zablokuj_drzwi_r = {SEM_DOOR_ROWER, -1, 0};
-    struct sembuf odblokuj_drzwi_r = {SEM_DOOR_ROWER, 1, 0};
+    // struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, 0};
+    // struct sembuf zablokuj_drzwi_n = {SEM_DOOR_NORMAL, -1, 0};
+    // struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, 0};
+    // struct sembuf zablokuj_drzwi_r = {SEM_DOOR_ROWER, -1, 0};
+    // struct sembuf odblokuj_drzwi_r = {SEM_DOOR_ROWER, 1, 0};
+    struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, SEM_UNDO};
+    struct sembuf zablokuj_drzwi_n = {SEM_DOOR_NORMAL, -1, SEM_UNDO};
+    struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, SEM_UNDO};
+    struct sembuf zablokuj_drzwi_r = {SEM_DOOR_ROWER, -1, SEM_UNDO};
+    struct sembuf odblokuj_drzwi_r = {SEM_DOOR_ROWER, 1, SEM_UNDO};
 
     int kursow = 0;
     int przewiezionych = 0;
@@ -91,7 +96,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         log_print(KOLOR_BUS, tag, "Czeka na peron. PID=%d", getpid());
 
         // Non-blocking czekanie na peron (mozna przerwac)
-        struct sembuf zajmij_nowait = {SEM_BUS_STOP, -1, IPC_NOWAIT};
+        // struct sembuf zajmij_nowait = {SEM_BUS_STOP, -1, IPC_NOWAIT};
+        struct sembuf zajmij_nowait = {SEM_BUS_STOP, -1, IPC_NOWAIT | SEM_UNDO};
         int proba_peronu = 0;
         while (proba_peronu < 100 && bus_running) {
             if (semop(sem_id, &zajmij_nowait, 1) == 0) break;
@@ -117,8 +123,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         wymuszony_odjazd = 0;
 
         // Aktualizacja stanu 
-        struct sembuf shm_lock = {SEM_SHM, -1, 0};
-        struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+        struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+        struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
         semop(sem_id, &shm_lock, 1);
         shm->aktualny_bus_pid = getpid();
