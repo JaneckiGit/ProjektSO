@@ -207,44 +207,6 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
 
     log_print(KOLOR_MAIN, "MAIN", "Wszystkie procesy uruchomione.");
 
-    // // URUCHOMIENIE GENERATORA PASAZEROW
-    // pid_generator = fork();
-    // if (pid_generator == -1) {
-    //     perror("fork generator");
-    // } else if (pid_generator == 0) {
-    //     /* Proces potomny - generator */
-    //     srand(time(NULL) ^ getpid());
-    //     int id_pas = 0;
-
-    //     while (1) {
-    //         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
-    //         if (s == (void *)-1) exit(1);
-
-    //         bool aktywna = s->symulacja_aktywna;
-    //         bool otwarta = s->stacja_otwarta;
-    //         shmdt(s);
-
-    //         if (!aktywna) break;
-    //         if (!otwarta) {
-    //             msleep(500);
-    //             continue;
-    //         }
-
-    //         // Tworzenie nowego pasazera
-    //         pid_t pas = fork();
-    //         if (pas == 0) {
-    //             char arg_id[16];
-    //             snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
-    //             execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);
-    //             exit(1);
-    //         }
-    //         id_pas++;
-
-    //         // Losowy interval miedzy pasazerami
-    //         msleep(losuj(800, 2000));
-    //     }
-    //     exit(0);
-    // }
     // URUCHOMIENIE GENERATORA PASAZEROW
     pid_generator = fork();
     if (pid_generator == -1) {
