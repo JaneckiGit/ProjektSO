@@ -214,8 +214,10 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                               int czy_rower, int czy_vip, int ma_bilet,
                               pid_t pid_dziecka, int id_dziecka, int wiek_dziecka,
                               int ile_osob) {
-    struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
+    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};  
     int sem_drzwi = czy_rower ? SEM_DOOR_ROWER : SEM_DOOR_NORMAL;
 
     while (shm->symulacja_aktywna) {
@@ -272,9 +274,10 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
 
 // Obsluga kupowania biletu w kasie
 static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int czy_vip, int ile_biletow) {
-    struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    struct sembuf shm_unlock = {SEM_SHM, 1, 0};
-
+    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
+    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     if (!czy_vip) {
         int K = shm->param_K;
         int numer_kasy = losuj(1, K);
@@ -282,9 +285,8 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         // struct sembuf zajmij = {sem_kasa, -1, 0};
         // struct sembuf zwolnij = {sem_kasa, 1, 0};
 
-        struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
-        struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
-
+        struct sembuf zajmij = {sem_kasa, -1, SEM_UNDO};
+        struct sembuf zwolnij = {sem_kasa, 1, SEM_UNDO};
         char tag_kasa[16];
         snprintf(tag_kasa, sizeof(tag_kasa), "KASA %d", numer_kasy);
 
@@ -345,9 +347,10 @@ void proces_pasazer(int id_pas) {
     int czy_vip = (losuj(1, 100) == 1);
     int czy_rower = (losuj(1, 100) <= 15);
 
-    struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    struct sembuf shm_unlock = {SEM_SHM, 1, 0};
-
+    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
+    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     semop(sem_id, &shm_lock, 1);
     shm->total_pasazerow++;
     shm->pasazerow_czeka++;
@@ -387,8 +390,10 @@ void proces_dziecko(int id_pas) {
     }
 
     int wiek = losuj(1, 7);
-    struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
+    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
     int moj_idx = -1;
     semop(sem_id, &shm_lock, 1);
