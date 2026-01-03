@@ -131,7 +131,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     }
 
     int sem_count = SEM_COUNT_BASE + K;
-    sem_id = semget(key_sem, sem_count, IPC_CREAT | 0600);    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
+    sem_id = semget(key_sem, sem_count, IPC_CREAT | 0600);
+    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);    msg_id = msgget(key_msg, IPC_CREAT | 0600);
     msg_id = msgget(key_msg, IPC_CREAT | 0600);
     msg_kasa_id = msgget(key_msg_kasa, IPC_CREAT | 0600);
 

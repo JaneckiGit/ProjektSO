@@ -16,8 +16,6 @@ void get_timestamp(char* buf, size_t size) {
 
 // log_print - Logowanie na ekran (kolory) i do pliku, WYMAGANE: open(), write(), close(), semop()
 void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
-    // struct sembuf lock = {SEM_LOG, -1, 0};
-    // struct sembuf unlock = {SEM_LOG, 1, 0};
     struct sembuf lock = {SEM_LOG, -1, SEM_UNDO};
     struct sembuf unlock = {SEM_LOG, 1, SEM_UNDO};  
     // Sekcja krytyczna 

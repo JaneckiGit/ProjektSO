@@ -120,6 +120,7 @@ $(TARGET_PAS): $(SRC_DIR)/pasazer.c $(SRC_DIR)/utils.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 run: all
+	@ipcrm -a 2>/dev/null || true
 	./$(TARGET)
 
 clean:
