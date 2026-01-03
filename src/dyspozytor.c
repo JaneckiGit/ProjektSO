@@ -48,6 +48,7 @@ static void cleanup_ipc(void) {
     if (sem_id != -1) semctl(sem_id, 0, IPC_RMID);
     if (shm_id != -1) shmctl(shm_id, IPC_RMID, NULL);
     if (msg_id != -1) msgctl(msg_id, IPC_RMID, NULL);
+    if (msg_kasa_id != -1) msgctl(msg_kasa_id, IPC_RMID, NULL);
 }
 
 // Zamkniecie wszystkich procesow potomnych
@@ -122,8 +123,9 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     key_t key_sem = ftok(".", 'S');
     key_t key_shm = ftok(".", 'M');
     key_t key_msg = ftok(".", 'Q');
+    key_t key_msg_kasa = ftok(".", 'K');
 
-    if (key_sem == -1 || key_shm == -1 || key_msg == -1) {
+    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1) {
         perror("ftok");
         exit(1);
     }
@@ -131,8 +133,9 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     int sem_count = SEM_COUNT_BASE + K;
     sem_id = semget(key_sem, sem_count, IPC_CREAT | 0600);    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
     msg_id = msgget(key_msg, IPC_CREAT | 0600);
+    msg_kasa_id = msgget(key_msg_kasa, IPC_CREAT | 0600);
 
-    if (sem_id == -1 || shm_id == -1 || msg_id == -1) {
+    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1) {
         perror("IPC create");
         cleanup_ipc();
         exit(1);

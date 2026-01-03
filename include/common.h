@@ -107,10 +107,27 @@ typedef struct {
     int wiek_dziecka;
 } BiletMsg;
 
+// Wiadomość - żądanie do kasy (pasażer -> kasa)
+typedef struct {
+    long mtype;              // = numer_kasy (1, 2, K)
+    pid_t pid_pasazera;      // PID pasażera (do odpowiedzi)
+    int id_pasazera;
+    int wiek;
+    int ile_biletow;         // 1 lub 2 (z dzieckiem)
+} KasaRequest;
+
+// Wiadomość - odpowiedź z kasy (kasa -> pasażer)
+typedef struct {
+    long mtype;              // = PID pasażera
+    int numer_kasy;          // Która kasa obsłużyła
+    int sukces;              // 1 = bilet kupiony
+} KasaResponse;
+
 // Zmienne IPC
 extern int sem_id;
 extern int shm_id;
 extern int msg_id;
+extern int msg_kasa_id;
 
 // Funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);

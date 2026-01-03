@@ -5,6 +5,7 @@
 int sem_id = -1;
 int shm_id = -1;
 int msg_id = -1;
+int msg_kasa_id = -1;
 
 // get_timestamp - Timestamp w formacie HH:MM:SS
 void get_timestamp(char* buf, size_t size) {
@@ -76,14 +77,22 @@ int init_ipc_client(void) {
     key_t key_sem = ftok(".", 'S');
     key_t key_shm = ftok(".", 'M');
     key_t key_msg = ftok(".", 'Q');
+    key_t key_msg_kasa = ftok(".", 'K');
     
-    if (key_sem == -1 || key_shm == -1 || key_msg == -1) { perror("ftok"); return -1; }
+    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1) { 
+        perror("ftok"); 
+        return -1; 
+    }
     
     sem_id = semget(key_sem, 0, 0600);
     shm_id = shmget(key_shm, 0, 0600);
     msg_id = msgget(key_msg, 0600);
+    msg_kasa_id = msgget(key_msg_kasa, 0600);
     
-    if (sem_id == -1 || shm_id == -1 || msg_id == -1) { perror("IPC get"); return -1; }
+    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1) { 
+        perror("IPC get"); 
+        return -1; 
+    }
     
     return 0;
 }

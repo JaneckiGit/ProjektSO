@@ -273,46 +273,89 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
 }
 
 // Obsluga kupowania biletu w kasie
+// static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int czy_vip, int ile_biletow) {
+//     // struct sembuf shm_lock = {SEM_SHM, -1, 0};
+//     // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+//     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
+//     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
+//     if (!czy_vip) {
+//         int K = shm->param_K;
+//         int numer_kasy = losuj(1, K);
+//         int sem_kasa = SEM_KASA_BASE + (numer_kasy - 1);
+//         // struct sembuf zajmij = {sem_kasa, -1, 0};
+//         // struct sembuf zwolnij = {sem_kasa, 1, 0};
+
+//         struct sembuf zajmij = {sem_kasa, -1, SEM_UNDO};
+//         struct sembuf zwolnij = {sem_kasa, 1, SEM_UNDO};
+//         char tag_kasa[16];
+//         snprintf(tag_kasa, sizeof(tag_kasa), "KASA %d", numer_kasy);
+
+//         log_print(KOLOR_PAS, tag, "Kolejka do KASA %d. PID=%d", numer_kasy, getpid());
+        
+//         if (semop(sem_id, &zajmij, 1) == -1) {
+//             perror("pasazer semop kasa");
+//             return 0;
+//         }
+
+//         semop(sem_id, &shm_lock, 1);
+//         if (shm->registered_count < MAX_REGISTERED) {
+//             shm->registered_pids[shm->registered_count] = getpid();
+//             shm->registered_wiek[shm->registered_count] = wiek;
+//             shm->registered_count++;
+//         }
+//         shm->sprzedanych_biletow += ile_biletow;
+//         shm->obsluzonych_kasa[numer_kasy - 1]++;
+//         semop(sem_id, &shm_unlock, 1);
+
+//         msleep(losuj(200, 500));
+//         semop(sem_id, &zwolnij, 1);
+
+//         log_print(KOLOR_KASA, tag_kasa, "Sprzedano %d bilet(y) PAS %d (wiek=%d)", 
+//                   ile_biletow, id_pas, wiek);
+//         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y). PID=%d", ile_biletow, getpid());
+//     } else {
+//         log_print(KOLOR_PAS, tag, "VIP - omija kolejke do kasy! PID=%d", getpid());
+//         semop(sem_id, &shm_lock, 1);
+//         if (shm->registered_count < MAX_REGISTERED) {
+//             shm->registered_pids[shm->registered_count] = getpid();
+//             shm->registered_wiek[shm->registered_count] = wiek;
+//             shm->registered_count++;
+//         }
+//         semop(sem_id, &shm_unlock, 1);
+//         log_print(KOLOR_KASA, "KASA", "VIP PAS %d (wiek=%d) - bilet okresowy", id_pas, wiek);
+//     }
+//     return 1;
+// }
 static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int czy_vip, int ile_biletow) {
-    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
+    
     if (!czy_vip) {
         int K = shm->param_K;
         int numer_kasy = losuj(1, K);
-        int sem_kasa = SEM_KASA_BASE + (numer_kasy - 1);
-        // struct sembuf zajmij = {sem_kasa, -1, 0};
-        // struct sembuf zwolnij = {sem_kasa, 1, 0};
-
-        struct sembuf zajmij = {sem_kasa, -1, SEM_UNDO};
-        struct sembuf zwolnij = {sem_kasa, 1, SEM_UNDO};
-        char tag_kasa[16];
-        snprintf(tag_kasa, sizeof(tag_kasa), "KASA %d", numer_kasy);
-
+        
         log_print(KOLOR_PAS, tag, "Kolejka do KASA %d. PID=%d", numer_kasy, getpid());
         
-        if (semop(sem_id, &zajmij, 1) == -1) {
-            perror("pasazer semop kasa");
+        KasaRequest req;
+        req.mtype = numer_kasy;
+        req.pid_pasazera = getpid();
+        req.id_pasazera = id_pas;
+        req.wiek = wiek;
+        req.ile_biletow = ile_biletow;
+        
+        if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0) == -1) {
+            perror("pasazer msgsnd kasa");
             return 0;
         }
-
-        semop(sem_id, &shm_lock, 1);
-        if (shm->registered_count < MAX_REGISTERED) {
-            shm->registered_pids[shm->registered_count] = getpid();
-            shm->registered_wiek[shm->registered_count] = wiek;
-            shm->registered_count++;
+        
+        KasaResponse resp;
+        if (msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), 0) == -1) {
+            perror("pasazer msgrcv kasa");
+            return 0;
         }
-        shm->sprzedanych_biletow += ile_biletow;
-        shm->obsluzonych_kasa[numer_kasy - 1]++;
-        semop(sem_id, &shm_unlock, 1);
-
-        msleep(losuj(200, 500));
-        semop(sem_id, &zwolnij, 1);
-
-        log_print(KOLOR_KASA, tag_kasa, "Sprzedano %d bilet(y) PAS %d (wiek=%d)", 
-                  ile_biletow, id_pas, wiek);
-        log_print(KOLOR_PAS, tag, "Kupil %d bilet(y). PID=%d", ile_biletow, getpid());
+        
+        log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
+                  ile_biletow, resp.numer_kasy, getpid());
     } else {
         log_print(KOLOR_PAS, tag, "VIP - omija kolejke do kasy! PID=%d", getpid());
         semop(sem_id, &shm_lock, 1);
