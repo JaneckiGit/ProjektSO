@@ -212,63 +212,72 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     log_print(KOLOR_MAIN, "MAIN", "Wszystkie procesy uruchomione.");
 
     // URUCHOMIENIE GENERATORA PASAZEROW
-    pid_generator = fork();
+    // pid_generator = fork();
+    // if (pid_generator == -1) {
+    //     perror("fork generator");
+    // } else if (pid_generator == 0) {
+    //     srand(time(NULL) ^ getpid());
+    //     int id_pas = 0;
+
+    //     while (1) {
+    //         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
+    //         if (s == (void *)-1) exit(1);
+
+    //         bool aktywna = s->symulacja_aktywna;
+    //         bool otwarta = s->stacja_otwarta;
+    //         int dzieci_czekajacych = 0;
+    //         int pierwszy_wolny_idx = -1;
+            
+    //         // Policz dzieci czekajace na opiekuna
+    //         for (int i = 0; i < s->dzieci_count; i++) {
+    //             if (s->dzieci[i].pid_dziecka > 0 && !s->dzieci[i].ma_rodzica) {
+    //                 dzieci_czekajacych++;
+    //                 if (pierwszy_wolny_idx < 0) pierwszy_wolny_idx = i;
+    //             }
+    //         }
+    //         shmdt(s);
+
+    //         if (!aktywna) break;
+    //         if (!otwarta) {
+    //             msleep(500);
+    //             continue;
+    //         }
+
+    //         // Losowanie typu pasazera
+    //         int los = losuj(1, 100);
+    //         char arg_id[16];
+    //         char arg_idx[16];
+    //         snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
+            
+    //         pid_t pas = fork();
+    //         if (pas == 0) {
+    //             if (los <= 15) {
+    //                 // 15% - dziecko <8 lat (czeka przed dworcem)
+    //                 execl("./bin/pasazer", "pasazer", "dziecko", arg_id, NULL);
+    //             } else if (los <= 55 && dzieci_czekajacych > 0 && pierwszy_wolny_idx >= 0) {
+    //                 // 40% - rodzic (jesli sa dzieci czekajace)
+    //                 snprintf(arg_idx, sizeof(arg_idx), "%d", pierwszy_wolny_idx);
+    //                 execl("./bin/pasazer", "pasazer", "rodzic", arg_id, arg_idx, NULL);
+    //             } else {
+    //                 // Reszta - zwykly pasazer
+    //                 execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);
+    //             }
+    //             exit(1);
+    //         }
+    //         id_pas++;
+
+    //         msleep(losuj(800, 2000));
+    //     }
+    //     exit(0);
+    // }
+    // URUCHOMIENIE GENERATORA PASAZEROW (przez exec)
+    pid_generator = fork(); // utworz proces potomny
     if (pid_generator == -1) {
         perror("fork generator");
-    } else if (pid_generator == 0) {
-        srand(time(NULL) ^ getpid());
-        int id_pas = 0;
-
-        while (1) {
-            SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
-            if (s == (void *)-1) exit(1);
-
-            bool aktywna = s->symulacja_aktywna;
-            bool otwarta = s->stacja_otwarta;
-            int dzieci_czekajacych = 0;
-            int pierwszy_wolny_idx = -1;
-            
-            // Policz dzieci czekajace na opiekuna
-            for (int i = 0; i < s->dzieci_count; i++) {
-                if (s->dzieci[i].pid_dziecka > 0 && !s->dzieci[i].ma_rodzica) {
-                    dzieci_czekajacych++;
-                    if (pierwszy_wolny_idx < 0) pierwszy_wolny_idx = i;
-                }
-            }
-            shmdt(s);
-
-            if (!aktywna) break;
-            if (!otwarta) {
-                msleep(500);
-                continue;
-            }
-
-            // Losowanie typu pasazera
-            int los = losuj(1, 100);
-            char arg_id[16];
-            char arg_idx[16];
-            snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
-            
-            pid_t pas = fork();
-            if (pas == 0) {
-                if (los <= 15) {
-                    // 15% - dziecko <8 lat (czeka przed dworcem)
-                    execl("./bin/pasazer", "pasazer", "dziecko", arg_id, NULL);
-                } else if (los <= 55 && dzieci_czekajacych > 0 && pierwszy_wolny_idx >= 0) {
-                    // 40% - rodzic (jesli sa dzieci czekajace)
-                    snprintf(arg_idx, sizeof(arg_idx), "%d", pierwszy_wolny_idx);
-                    execl("./bin/pasazer", "pasazer", "rodzic", arg_id, arg_idx, NULL);
-                } else {
-                    // Reszta - zwykly pasazer
-                    execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);
-                }
-                exit(1);
-            }
-            id_pas++;
-
-            msleep(losuj(800, 2000));
-        }
-        exit(0);
+    } else if (pid_generator == 0) { // proces dziecka
+        execl("./bin/pasazer", "pasazer", "generator", NULL); // uruchom generator
+        perror("execl generator");
+        exit(1);
     }
 
     // GLOWNA PETLA DYSPOZYTORA
