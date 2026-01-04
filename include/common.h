@@ -3,8 +3,6 @@
 #define COMMON_H
 
 #include <sys/types.h>
-#include <stdio.h> 
-#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
@@ -23,57 +21,59 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-// Stałe
-#define MAX_BUSES           50
-#define MAX_CAPACITY        200
-#define MAX_REGISTERED      1000
-#define MAX_CZEKAJACE_DZIECI 100
-#define MAX_KASY            10
-#define DEFAULT_K           1
+// Stałe Stałe konfiguracyjne (MAX_BUSES, MAX_CAPACITY, etc.)
+#define MAX_BUSES           50 // Maksymalna liczba autobusów
+#define MAX_CAPACITY        200 // Maksymalna pojemność autobusu
+#define MAX_REGISTERED      1000 // Maksymalna liczba zarejestrowanych pasażerów
+#define MAX_CZEKAJACE_DZIECI 100 // Maksymalna liczba dzieci czekających na opiekunów
+#define MAX_KASY            10 // Maksymalna liczba kas biletowych
+#define DEFAULT_K           1 // Domyślna liczba kas biletowych
 
-// Kolory ANSI
-#define KOLOR_RESET   "\033[0m"
-#define KOLOR_MAIN    "\033[1;37m"
-#define KOLOR_KASA    "\033[1;32m"
-#define KOLOR_BUS     "\033[1;33m"
-#define KOLOR_DYSP    "\033[1;31m"
-#define KOLOR_PAS     "\033[1;36m"
-#define KOLOR_STAT    "\033[1;35m"
+// Kolory ANSI do logow
+#define KOLOR_RESET   "\033[0m" // Reset
+#define KOLOR_MAIN    "\033[1;37m" // Biały
+#define KOLOR_KASA    "\033[1;32m" // Zielony
+#define KOLOR_BUS     "\033[1;33m" // Żółty
+#define KOLOR_DYSP    "\033[1;31m" // Czerwony
+#define KOLOR_PAS     "\033[1;36m" // Cyan
+#define KOLOR_STAT    "\033[1;35m"  // Magenta
 
 // Indeksy semaforów
-#define SEM_DOOR_NORMAL  0
-#define SEM_DOOR_ROWER   1
-#define SEM_BUS_STOP     2
-#define SEM_LOG          3
-#define SEM_SHM          4
-#define SEM_KASA_BASE    5
-#define SEM_COUNT_BASE   5
+#define SEM_DOOR_NORMAL  0 // drzwi do autobusu
+#define SEM_DOOR_ROWER   1 // drzwi do autobusu z rowerem
+#define SEM_BUS_STOP     2 // peron - tylko jeden autobus
+#define SEM_LOG          3 //Log
+#define SEM_SHM          4 // pamięć dzielona
+#define SEM_COUNT   5 // liczba semaforów przed kasami
 
 // Struktura dziecka czekającego na rodzica
+//Czekajace Dziecko - dziecko <8 lat czekające PRZED dworcem na opiekuna
 typedef struct {
-    pid_t pid_dziecka;
+    pid_t pid_dziecka; 
     int id_dziecka;
     int wiek_dziecka;
     bool ma_rodzica;
     pid_t pid_rodzica;
 } CzekajaceDziecko;
 
-// Pamięć dzielona
+// Pamięć dzielona miedzy wszystkie procesy
+//Dostęp chroniony przez SEM_SHM
 typedef struct {
     int param_N;
     int param_P;
     int param_R;
     int param_T;
     int param_K;
-    bool stacja_otwarta;
-    bool symulacja_aktywna;
-    
+    // Flagi stanu
+    bool stacja_otwarta; // false = dworzec zamknięty (SIGUSR2)
+    bool symulacja_aktywna; // false = koniec symulacji
+    // Stan autobusu na peronie
     pid_t aktualny_bus_pid;
     int aktualny_bus_id;
     int miejsca_zajete;
     int rowery_zajete;
     bool bus_na_peronie;
-    
+    // Statystyki
     int total_pasazerow;
     int pasazerow_w_trasie;
     int pasazerow_czeka;
@@ -82,7 +82,7 @@ typedef struct {
     int total_przewiezionych;
     int odrzuconych_bez_biletu;
     int obsluzonych_kasa[MAX_KASY];
-
+    // Rejestracja pasażerów (do sprawdzania biletów)
     pid_t registered_pids[MAX_REGISTERED];
     int registered_wiek[MAX_REGISTERED];
     int registered_count;
@@ -94,7 +94,7 @@ typedef struct {
 
 // Wiadomość - bilet
 typedef struct {
-    long mtype;
+    long mtype; //okresla priorytet 
     pid_t pid_pasazera;
     int id_pasazera;
     int wiek;
@@ -124,10 +124,10 @@ typedef struct {
 } KasaResponse;
 
 // Zmienne IPC
-extern int sem_id;
-extern int shm_id;
-extern int msg_id;
-extern int msg_kasa_id;
+extern int sem_id; // id semaforów
+extern int shm_id; // id pamięci dzielonej
+extern int msg_id; // id kolejki wiadomości dla autobusów
+extern int msg_kasa_id; // id kolejki wiadomości dla kas
 
 // Funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);

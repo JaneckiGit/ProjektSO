@@ -1,49 +1,51 @@
-// dyspozytor.c - Glowny modul zarzadzajacy symulacja
+//dyspozytor.c - Glowny modul zarzadzajacy symulacja
+//Tworzenie zasobów IPC (semafory, pamięć dzielona, kolejki)
+//Uruchamianie procesów: kasa, autobusy, generator pasażerów
+//Obsługę sygnałów SIGUSR1 (wymuszony odjazd) i SIGUSR2 (zamknięcie dworca)
+//Graceful shutdown i cleanup zasobów
 #include "common.h"
 #include "dyspozytor.h"
-#include "pasazer.h"
-#include "bus.h"
-#include "kasa.h"
 
 
 // PID-y procesow potomnych
-static pid_t pid_kasa = -1;
-static pid_t pids_busy[MAX_BUSES];
-static int ile_busow = 0;
-static pid_t pid_generator = -1;
+static pid_t pid_kasa = -1; //PID kasy biletowej
+static pid_t pids_busy[MAX_BUSES];//PID-y autobusow
+static int ile_busow = 0; //Liczba autobusow
+static pid_t pid_generator = -1; //PID generatora pasazerow
 
-// Flagi sygnalow
-static volatile sig_atomic_t flaga_sigusr1 = 0;
-static volatile sig_atomic_t flaga_sigusr2 = 0;
-static volatile sig_atomic_t flaga_stop = 0;
+// Flagi sygnalow (volatile modyfikowane w handlerze)
+static volatile sig_atomic_t flaga_sigusr1 = 0;// SIGUSR1 = wymuszony odjazd autobusu
+static volatile sig_atomic_t flaga_sigusr2 = 0;// SIGUSR2 = zamknięcie dworca
+static volatile sig_atomic_t flaga_stop = 0;// SIGINT/SIGTERM = natychmiastowe zakończenie
 
 // Handler sygnalow dla dyspozytora (WYMAGANIE 5.2.d: sigaction())
+// Handler sygnałów - ustawia flagi, nie wykonuje operacji blokujących
 static void handler_dyspozytor(int sig) {
-    if (sig == SIGUSR1) {
+    if (sig == SIGUSR1) {// SIGUSR1 = wymuszony odjazd autobusu z peronu
         flaga_sigusr1 = 1;
-    } else if (sig == SIGUSR2) {
+    } else if (sig == SIGUSR2) {// SIGUSR2 = zamknięcie dworca (graceful shutdown)
         flaga_sigusr2 = 1;
-    } else if (sig == SIGINT || sig == SIGTERM) {
+    } else if (sig == SIGINT || sig == SIGTERM) {// SIGINT/SIGTERM = natychmiastowe zakończenie
         flaga_stop = 1;
     }
 }
 
 // Inicjalizacja semaforow (WYMAGANIE 5.2.e: semget(), semctl())
-static void init_semafory(int K) {
+//Wszystkie ustawione na 1 (mutex/binary semaphore)
+static void init_semafory(void) {
     union semun { int val; } arg;
     arg.val = 1;
-    semctl(sem_id, SEM_DOOR_NORMAL, SETVAL, arg);
+    semctl(sem_id, SEM_DOOR_NORMAL, SETVAL, arg);// SEM_DOOR_NORMAL/ROWER - kontrola wejścia do autobusu
     semctl(sem_id, SEM_DOOR_ROWER, SETVAL, arg);
-    semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);
-    semctl(sem_id, SEM_LOG, SETVAL, arg);
-    semctl(sem_id, SEM_SHM, SETVAL, arg);
+    semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);// SEM_BUS_STOP - tylko jeden autobus na peronie
+    semctl(sem_id, SEM_LOG, SETVAL, arg);// SEM_LOG - sekcja krytyczna logow
+    semctl(sem_id, SEM_SHM, SETVAL, arg);// SEM_SHM - ochrona pamięci dzielonej
     
-    for (int i = 0; i < K; i++) {
-        semctl(sem_id, SEM_KASA_BASE + i, SETVAL, arg);
-    }
+    
 }
 
 // Sprzatanie zasobow IPC
+//Wywoływane przy zakończeniu symulacji
 static void cleanup_ipc(void) {
     if (sem_id != -1) semctl(sem_id, 0, IPC_RMID);
     if (shm_id != -1) shmctl(shm_id, IPC_RMID, NULL);
@@ -52,25 +54,26 @@ static void cleanup_ipc(void) {
 }
 
 // Zamkniecie wszystkich procesow potomnych
+//Wysyła SIGTERM i czeka na zakończenie
 static void shutdown_children(void) {
-    /* Generator */
+    // Generator 
     if (pid_generator > 0) {
         kill(pid_generator, SIGTERM);
     }
 
-    /* Kasa */
+    //Kasa 
     if (pid_kasa > 0) {
         kill(pid_kasa, SIGTERM);
     }
 
-    /* Autobusy */
+    //Autobusy 
     for (int i = 0; i < ile_busow; i++) {
         if (pids_busy[i] > 0) {
             kill(pids_busy[i], SIGTERM);
         }
     }
 
-    /* Czekaj na zakończenie */
+    // Czekaj na zakończenie wszystkich procesów potomnych 
     while (wait(NULL) > 0);
 }
 
@@ -88,10 +91,8 @@ static void zapisz_raport_koncowy(SharedData *shm) {
         "Przewiezionych: %d\n"
         "Biletow: %d\n"
         "VIP: %d\n"
-        "Odrzuconych (brak biletu): %d\n"
         "========================================\n",
         shm->total_pasazerow, shm->total_przewiezionych,
-        shm->sprzedanych_biletow, shm->vip_count, shm->odrzuconych_bez_biletu);
     write(fd, buf, len);
 
     for (int i = 0; i < shm->param_K; i++) {
@@ -130,9 +131,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         exit(1);
     }
 
-    int sem_count = SEM_COUNT_BASE + K;
-    sem_id = semget(key_sem, sem_count, IPC_CREAT | 0600);
-    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);    msg_id = msgget(key_msg, IPC_CREAT | 0600);
+    sem_id = semget(key_sem, SEM_COUNT, IPC_CREAT | 0600);
+    shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
     msg_id = msgget(key_msg, IPC_CREAT | 0600);
     msg_kasa_id = msgget(key_msg_kasa, IPC_CREAT | 0600);
 
@@ -142,7 +142,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         exit(1);
     }
 
-    init_semafory(K);
+    init_semafory();
 
     // INICJALIZACJA PAMIECI DZIELONEJ (WYMAGANIE 5.2.g: shmat(), shmdt())
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
@@ -210,66 +210,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     }
 
     log_print(KOLOR_MAIN, "MAIN", "Wszystkie procesy uruchomione.");
-
-    // URUCHOMIENIE GENERATORA PASAZEROW
-    // pid_generator = fork();
-    // if (pid_generator == -1) {
-    //     perror("fork generator");
-    // } else if (pid_generator == 0) {
-    //     srand(time(NULL) ^ getpid());
-    //     int id_pas = 0;
-
-    //     while (1) {
-    //         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
-    //         if (s == (void *)-1) exit(1);
-
-    //         bool aktywna = s->symulacja_aktywna;
-    //         bool otwarta = s->stacja_otwarta;
-    //         int dzieci_czekajacych = 0;
-    //         int pierwszy_wolny_idx = -1;
-            
-    //         // Policz dzieci czekajace na opiekuna
-    //         for (int i = 0; i < s->dzieci_count; i++) {
-    //             if (s->dzieci[i].pid_dziecka > 0 && !s->dzieci[i].ma_rodzica) {
-    //                 dzieci_czekajacych++;
-    //                 if (pierwszy_wolny_idx < 0) pierwszy_wolny_idx = i;
-    //             }
-    //         }
-    //         shmdt(s);
-
-    //         if (!aktywna) break;
-    //         if (!otwarta) {
-    //             msleep(500);
-    //             continue;
-    //         }
-
-    //         // Losowanie typu pasazera
-    //         int los = losuj(1, 100);
-    //         char arg_id[16];
-    //         char arg_idx[16];
-    //         snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
-            
-    //         pid_t pas = fork();
-    //         if (pas == 0) {
-    //             if (los <= 15) {
-    //                 // 15% - dziecko <8 lat (czeka przed dworcem)
-    //                 execl("./bin/pasazer", "pasazer", "dziecko", arg_id, NULL);
-    //             } else if (los <= 55 && dzieci_czekajacych > 0 && pierwszy_wolny_idx >= 0) {
-    //                 // 40% - rodzic (jesli sa dzieci czekajace)
-    //                 snprintf(arg_idx, sizeof(arg_idx), "%d", pierwszy_wolny_idx);
-    //                 execl("./bin/pasazer", "pasazer", "rodzic", arg_id, arg_idx, NULL);
-    //             } else {
-    //                 // Reszta - zwykly pasazer
-    //                 execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);
-    //             }
-    //             exit(1);
-    //         }
-    //         id_pas++;
-
-    //         msleep(losuj(800, 2000));
-    //     }
-    //     exit(0);
-    // }
+    
     // URUCHOMIENIE GENERATORA PASAZEROW (przez exec)
     pid_generator = fork(); // utworz proces potomny
     if (pid_generator == -1) {

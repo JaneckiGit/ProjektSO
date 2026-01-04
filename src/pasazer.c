@@ -1,4 +1,11 @@
 // pasazer.c - Modul pasazera
+//"generator" - tworzy nowych pasażerów co 800-2000ms
+// "normal" - dorosły 9-80 lat, kupuje 1 bilet
+//"dziecko" - dziecko 1-7 lat, czeka PRZED dworcem na opiekuna
+//"rodzic" - opiekun 18-80 lat, zabiera dziecko, kupuje 2 bilety
+//VIP (1% szans): omija kolejkę do kasy i ma priorytet w autobusie
+//ROWER zajmuje miejsce w puli rowerowej autobusu
+
 #include "common.h"
 #include "pasazer.h"
 
@@ -27,8 +34,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                               int czy_rower, int czy_vip, int ma_bilet,
                               pid_t pid_dziecka, int id_dziecka, int wiek_dziecka,
                               int ile_osob) {
-    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};  
     int sem_drzwi = czy_rower ? SEM_DOOR_ROWER : SEM_DOOR_NORMAL;
@@ -55,8 +61,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 }
                 usleep(30000);
             } else {
-                // struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT};
-                // struct sembuf wyjdz = {sem_drzwi, 1, 0};
                 struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT | SEM_UNDO};
                 struct sembuf wyjdz = {sem_drzwi, 1, SEM_UNDO};
                 if (semop(sem_id, &wejdz, 1) == 0) {
@@ -145,12 +149,10 @@ void proces_pasazer(int id_pas) {
         exit(0);
     }
 
-    int wiek = losuj(18, 80);
+    int wiek = losuj(9, 80);
     int czy_vip = (losuj(1, 100) == 1);
     int czy_rower = (losuj(1, 100) <= 15);
 
-    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     semop(sem_id, &shm_lock, 1);
@@ -192,8 +194,7 @@ void proces_dziecko(int id_pas) {
     }
 
     int wiek = losuj(1, 7);
-    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+    
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
@@ -261,11 +262,10 @@ void proces_rodzic(int id_pas, int idx_dziecka) {
         exit(0);
     }
 
-    int wiek = losuj(25, 50);
+    int wiek = losuj(18, 80);
     int czy_vip = (losuj(1, 100) == 1);
 
-    // struct sembuf shm_lock = {SEM_SHM, -1, 0};
-    // struct sembuf shm_unlock = {SEM_SHM, 1, 0};
+
 
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
@@ -354,37 +354,6 @@ void proces_generator(void) {
     }
     exit(0);
 }
-// // Main - uruchamiany przez exec() z dyspozytora
-// int main(int argc, char *argv[]) {
-//     if (argc < 3) {
-//         fprintf(stderr, "Uzycie: %s <typ> <id> [idx_dziecka]\n", argv[0]);
-//         fprintf(stderr, "  typ: normal, dziecko, rodzic\n");
-//         exit(1);
-//     }
-    
-//     if (init_ipc_client() == -1) exit(1);
-    
-//     const char* typ = argv[1];
-//     int id = atoi(argv[2]);
-    
-//     if (strcmp(typ, "normal") == 0) {
-//         proces_pasazer(id);
-//     } else if (strcmp(typ, "dziecko") == 0) {
-//         proces_dziecko(id);
-//     } else if (strcmp(typ, "rodzic") == 0) {
-//         if (argc < 4) {
-//             fprintf(stderr, "Rodzic wymaga idx_dziecka\n");
-//             exit(1);
-//         }
-//         proces_rodzic(id, atoi(argv[3]));
-//     } else {
-//         fprintf(stderr, "Nieznany typ: %s\n", typ);
-//         exit(1);
-//     }
-    
-//     return 0;
-// }
-// Punkt wejscia - obsluguje rozne typy: normal, dziecko, rodzic, generator
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Uzycie: %s <typ> <id> [idx_dziecka]\n", argv[0]);

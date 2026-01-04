@@ -1,36 +1,49 @@
 // kasa.c - Modul kasy biletowej (aktywna obsluga pasazerow)
+//Wielowatkowa obsługa K kas (pthread)
+//kazdy watek nasluchuje na swojej mtype w kolejce msg_kasa_id
+//Pasażer wysyła KasaRequest, kasa odpowiada KasaResponse
+//Synchronizacja:
+//pthread_mutex - sekcja krytyczna przy obsłudze
+//pthread_cond - wybudzanie przy zakończeniu
+//SEM_SHM - ochrona pamięci dzielonej
 #include "common.h"
 #include "kasa.h"
+
 
 static volatile int kasa_running = 1;
 static pthread_mutex_t kasa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t kasa_cond = PTHREAD_COND_INITIALIZER;
 
+// Handler sygnałów kasy
 static void handler_kasa(int sig) {
     (void)sig;
     kasa_running = 0;
     pthread_cond_broadcast(&kasa_cond);
 }
 
+// Wątek obsługujący kase
+//odbiera KasaRequest i wysyła KasaResponse
 static void* kasa_watek(void* arg) {
     int numer_kasy = *(int*)arg;
     char tag[16];
     snprintf(tag, sizeof(tag), "KASA %d", numer_kasy);
 
     log_print(KOLOR_KASA, tag, "Otwarta. TID=%lu", (unsigned long)pthread_self());
-
+    // Podłączenie do pamięci dzielonej
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
     if (shm == (void *)-1) { perror("kasa shmat"); return NULL; }
-
+    // Operacje semaforowe z SEM_UNDO (bezpieczeństwo przy SIGSTOP)
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
-
+    // Główna pętla - odbiera żądania z kolejki
     while (kasa_running && shm->symulacja_aktywna) {
         KasaRequest req;
+        // IPC_NOWAIT - nie blokuj jeśli brak żądań
         ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
                              numer_kasy, IPC_NOWAIT);
         
         if (ret != -1) {
+            // Obsługa pasażera
             pthread_mutex_lock(&kasa_mutex);
             
             log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)", 
@@ -95,6 +108,12 @@ void proces_kasa(int K) {
 
     pthread_t* tidy = malloc(K * sizeof(pthread_t));
     int* numery = malloc(K * sizeof(int));
+    if (!tidy || !numery) {
+        perror("malloc kasy");
+        if (tidy) free(tidy);
+        if (numery) free(numery);
+        exit(1);
+    }
 
     for (int i = 0; i < K; i++) {
         numery[i] = i + 1;

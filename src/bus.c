@@ -1,4 +1,13 @@
 // bus.c - Modul autobusu
+//Cykl życia autobusu:
+//Jedzie na pętlę (8-15s)
+//Czeka na wolny peron (non-blocking)
+//Stoi na peronie i przyjmuje pasażerów (czas T)
+//Odjeżdża i jedzie trasę (Ti - losowy dla każdego autobusu)
+//Pasażerowie wysiadają
+//Sygnały:
+//- SIGUSR1: Wymuszony odjazd (natychmiast opuszcza peron)
+//- SIGTERM: Zakończenie pracy
 #include "bus.h"
 #include "common.h"
 
@@ -52,12 +61,6 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         exit(1);
     }
 
-    // Operacje semaforowe 
-    // struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, 0};
-    // struct sembuf zablokuj_drzwi_n = {SEM_DOOR_NORMAL, -1, 0};
-    // struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, 0};
-    // struct sembuf zablokuj_drzwi_r = {SEM_DOOR_ROWER, -1, 0};
-    // struct sembuf odblokuj_drzwi_r = {SEM_DOOR_ROWER, 1, 0};
     struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, SEM_UNDO};
     struct sembuf zablokuj_drzwi_n = {SEM_DOOR_NORMAL, -1, SEM_UNDO};
     struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, SEM_UNDO};

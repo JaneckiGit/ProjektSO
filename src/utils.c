@@ -1,4 +1,8 @@
-// utils.c - Funkcje pomocnicze, Projekt SO 2025/2026 - Temat 12
+// utils.c - Funkcje pomocnicze
+//zmienne globalne IPC
+//funkcje Logow 
+//funkcje pomocnicze (losuj, msleep)
+//Inicjalizacja IPC dla procesow potomnych
 #include "common.h"
 
 // Zmienne globalne IPC
@@ -41,7 +45,7 @@ void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
         KOLOR_MAIN, time_buf, kolor, tag, msg, KOLOR_RESET);
     write(STDOUT_FILENO, screen, slen);
 
-    //PLIK (bez kolorów) raport.txt
+    //PLIK raport.txt
     char file_line[600];
     int flen = snprintf(file_line, sizeof(file_line),
                         "[%s] [%-6s] %s\n",
@@ -71,7 +75,12 @@ void msleep(int ms) {
     usleep(ms * 1000);
 }
 // Inicjalizacja IPC dla procesow potomnych (bus, kasa, pasazer)
+//Łączy się do ISTNIEJĄCYCH zasobów (bez IPC_CREAT
+//Klucze muszą być identyczne jak w dyspozytorze
+//Wywoływane przez: bus, kasa, pasazer
+
 int init_ipc_client(void) {
+    // Generowanie kluczy (identyczne jak w dyspozytorze)
     key_t key_sem = ftok(".", 'S');
     key_t key_shm = ftok(".", 'M');
     key_t key_msg = ftok(".", 'Q');
@@ -81,7 +90,7 @@ int init_ipc_client(void) {
         perror("ftok"); 
         return -1; 
     }
-    
+    // Łączenie do istniejących zasobów
     sem_id = semget(key_sem, 0, 0600);
     shm_id = shmget(key_shm, 0, 0600);
     msg_id = msgget(key_msg, 0600);
