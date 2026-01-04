@@ -1,13 +1,16 @@
 // main.c - Punkt startowy symulacji
+//Parsuje argumenty i uruchamia dyspozytor
+//Użycie: ./autobus_main [N] [P] [R] [T] [K]
 #include "dyspozytor.h"
 #include "common.h"
 
 int main(int argc, char *argv[]) {
+    // Domyślne parametry
     int N = 3;     // Liczba autobusow
     int P = 10;    // Pojemnosc
     int R = 3;     // Rowery
     int T = 5000;  // Postoj [ms]
-    int K = DEFAULT_K;
+    int K = DEFAULT_K; // Liczba kas
 
 
     // Parsowanie argumentow
@@ -39,7 +42,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Start symulacji
+    // Start symulacji glona petla symulacji
     proces_dyspozytor(N, P, R, T, K);
 
     return 0;

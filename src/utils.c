@@ -1,10 +1,15 @@
-// utils.c - Funkcje pomocnicze, Projekt SO 2025/2026 - Temat 12
+// utils.c - Funkcje pomocnicze
+//zmienne globalne IPC
+//funkcje Logow 
+//funkcje pomocnicze (losuj, msleep)
+//Inicjalizacja IPC dla procesow potomnych
 #include "common.h"
 
 // Zmienne globalne IPC
 int sem_id = -1;
 int shm_id = -1;
 int msg_id = -1;
+int msg_kasa_id = -1;
 
 // get_timestamp - Timestamp w formacie HH:MM:SS
 void get_timestamp(char* buf, size_t size) {
@@ -15,9 +20,8 @@ void get_timestamp(char* buf, size_t size) {
 
 // log_print - Logowanie na ekran (kolory) i do pliku, WYMAGANE: open(), write(), close(), semop()
 void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
-    struct sembuf lock = {SEM_LOG, -1, 0};
-    struct sembuf unlock = {SEM_LOG, 1, 0};
-
+    struct sembuf lock = {SEM_LOG, -1, SEM_UNDO};
+    struct sembuf unlock = {SEM_LOG, 1, SEM_UNDO};  
     // Sekcja krytyczna 
     if (sem_id != -1) {
         semop(sem_id, &lock, 1);
@@ -41,7 +45,7 @@ void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
         KOLOR_MAIN, time_buf, kolor, tag, msg, KOLOR_RESET);
     write(STDOUT_FILENO, screen, slen);
 
-    //PLIK (bez kolorów) raport.txt
+    //PLIK raport.txt
     char file_line[600];
     int flen = snprintf(file_line, sizeof(file_line),
                         "[%s] [%-6s] %s\n",
@@ -71,18 +75,31 @@ void msleep(int ms) {
     usleep(ms * 1000);
 }
 // Inicjalizacja IPC dla procesow potomnych (bus, kasa, pasazer)
+//Łączy się do ISTNIEJĄCYCH zasobów (bez IPC_CREAT
+//Klucze muszą być identyczne jak w dyspozytorze
+//Wywoływane przez: bus, kasa, pasazer
+
 int init_ipc_client(void) {
+    // Generowanie kluczy (identyczne jak w dyspozytorze)
     key_t key_sem = ftok(".", 'S');
     key_t key_shm = ftok(".", 'M');
     key_t key_msg = ftok(".", 'Q');
+    key_t key_msg_kasa = ftok(".", 'K');
     
-    if (key_sem == -1 || key_shm == -1 || key_msg == -1) { perror("ftok"); return -1; }
-    
+    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1) { 
+        perror("ftok"); 
+        return -1; 
+    }
+    // Łączenie do istniejących zasobów
     sem_id = semget(key_sem, 0, 0600);
     shm_id = shmget(key_shm, 0, 0600);
     msg_id = msgget(key_msg, 0600);
+    msg_kasa_id = msgget(key_msg_kasa, 0600);
     
-    if (sem_id == -1 || shm_id == -1 || msg_id == -1) { perror("IPC get"); return -1; }
+    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1) { 
+        perror("IPC get"); 
+        return -1; 
+    }
     
     return 0;
 }
