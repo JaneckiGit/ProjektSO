@@ -93,6 +93,7 @@ static void zapisz_raport_koncowy(SharedData *shm) {
         "VIP: %d\n"
         "========================================\n",
         shm->total_pasazerow, shm->total_przewiezionych,
+        shm->sprzedanych_biletow, shm->vip_count);
     write(fd, buf, len);
 
     for (int i = 0; i < shm->param_K; i++) {
