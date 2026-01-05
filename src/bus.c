@@ -285,7 +285,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     koniec:
     log_print(KOLOR_BUS, tag, "KONIEC. Kursow: %d, Przewiezionych: %d. PID=%d",
               kursow, przewiezionych, getpid());
-    
+
     shmdt(shm);
     exit(0);
 }
