@@ -77,7 +77,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
 
         // JAZDA NA PETLE
-        int czas_dojazdu = losuj(8000, 15000);
+        int czas_dojazdu;
+        if (kursow == 0) {
+            czas_dojazdu = losuj(2000, 4000);  // Pierwszy kurs: 2-4s
+        } else {
+            czas_dojazdu = losuj(8000, 15000); // Kolejne: 8-15s
+        }
         log_print(KOLOR_BUS, tag, "Jedzie na petle (%dms). PID=%d", czas_dojazdu, getpid());
         
         int pozostalo = czas_dojazdu;
@@ -227,7 +232,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 }
             }
 
-            usleep(100000);  // 100ms 
+            usleep(500000);  // 500ms 
             czas_uplyniony += 100;
         }
 
