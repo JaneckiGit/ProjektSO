@@ -1,0 +1,157 @@
+=== RAPORT SYMULACJI AUTOBUSU PODMIEJSKIEGO ===
+
+[23:10:54] [MAIN  ] START: N=3 P=10 R=3 T=5000 K=1
+[23:10:54] [DYSP  ] Dyspozytor rozpoczął pracę. PID=90167
+[23:10:54] [DYSP  ] >>> Sygnały: kill -SIGUSR1 90167 | kill -SIGUSR2 90167 <<<
+[23:10:54] [KASA  ] Uruchomiono (K=1 watkow). PID=90168
+[23:10:54] [BUS   ] BUS 1 uruchomiony. PID=90169
+[23:10:54] [KASA  ] Uruchamiam 1 kas (watkow). PID=90168
+[23:10:54] [BUS   ] BUS 2 uruchomiony. PID=90170
+[23:10:54] [BUS 1 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=21930ms. PID=90169
+[23:10:54] [KASA 1] Otwarta. TID=281473077002720
+[23:10:54] [BUS 1 ] Jedzie na petle (9485ms). PID=90169
+[23:10:54] [BUS   ] BUS 3 uruchomiony. PID=90172
+[23:10:54] [BUS 2 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=16697ms. PID=90170
+[23:10:54] [BUS 3 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=21708ms. PID=90172
+[23:10:54] [MAIN  ] Wszystkie procesy uruchomione.
+[23:10:54] [BUS 2 ] Jedzie na petle (9784ms). PID=90170
+[23:10:54] [BUS 3 ] Jedzie na petle (10553ms). PID=90172
+[23:10:54] [PAS 0 ] Wszedl na dworzec (wiek=26, rower). PID=90174
+[23:10:54] [PAS 0 ] Kolejka do KASA 1. PID=90174
+[23:10:54] [KASA 1] Obsluguje PAS 0 (wiek=26, biletow=1)
+[23:10:55] [KASA 1] Sprzedano 1 bilet(y) PAS 0
+[23:10:55] [PAS 0 ] Kupil 1 bilet(y) w KASA 1. PID=90174
+[23:10:56] [PAS 1 ] Wszedl na dworzec (wiek=23). PID=90202
+[23:10:56] [PAS 1 ] Kolejka do KASA 1. PID=90202
+[23:10:56] [KASA 1] Obsluguje PAS 1 (wiek=23, biletow=1)
+[23:10:57] [KASA 1] Sprzedano 1 bilet(y) PAS 1
+[23:10:57] [PAS 1 ] Kupil 1 bilet(y) w KASA 1. PID=90202
+[23:10:58] [PAS 2 ] Dziecko (wiek=6) czeka PRZED dworcem na opiekuna. PID=90230
+[23:10:59] [PAS 3 ] Opiekun (wiek=50) + dziecko PAS 2 (6 lat) - wchodza. PID=90247
+[23:10:59] [PAS 3 ] Kolejka do KASA 1. PID=90247
+[23:10:59] [KASA 1] Obsluguje PAS 3 (wiek=50, biletow=2)
+[23:10:59] [PAS 2 ] Dziecko: opiekun przyszedl - wchodzimy! PID=90230
+[23:10:59] [KASA 1] Sprzedano 2 bilet(y) PAS 3
+[23:10:59] [PAS 3 ] Kupil 2 bilet(y) w KASA 1. PID=90247
+[23:11:00] [PAS 4 ] Wszedl na dworzec (wiek=77). PID=90252
+[23:11:00] [PAS 4 ] Kolejka do KASA 1. PID=90252
+[23:11:00] [KASA 1] Obsluguje PAS 4 (wiek=77, biletow=1)
+[23:11:00] [KASA 1] Sprzedano 1 bilet(y) PAS 4
+[23:11:00] [PAS 4 ] Kupil 1 bilet(y) w KASA 1. PID=90252
+[23:11:01] [PAS 5 ] Wszedl na dworzec (wiek=29). PID=90282
+[23:11:01] [PAS 5 ] Kolejka do KASA 1. PID=90282
+[23:11:01] [KASA 1] Obsluguje PAS 5 (wiek=29, biletow=1)
+[23:11:02] [KASA 1] Sprzedano 1 bilet(y) PAS 5
+[23:11:02] [PAS 5 ] Kupil 1 bilet(y) w KASA 1. PID=90282
+[23:11:02] [PAS 6 ] Dziecko (wiek=4) czeka PRZED dworcem na opiekuna. PID=90317
+[23:11:03] [PAS 7 ] Dziecko (wiek=3) czeka PRZED dworcem na opiekuna. PID=90332
+[23:11:04] [BUS 1 ] Czeka na peron. PID=90169
+[23:11:04] [BUS 1 ] [Kurs #1] Na peronie. PID=90169, Miejsca: 0/10, Rowery: 0/3
+[23:11:04] [BUS 1 ] Kierowca: PAS 4 - bilet OK.
+[23:11:04] [BUS 1 ] Wsiadł PAS 4 (PID=90252, wiek=77). Miejsca: 1/10, Rowery: 0/3
+[23:11:04] [BUS 1 ] Kierowca: PAS 1 - bilet OK.
+[23:11:04] [BUS 1 ] Wsiadł PAS 1 (PID=90202, wiek=23). Miejsca: 2/10, Rowery: 0/3
+[23:11:04] [BUS 2 ] Czeka na peron. PID=90170
+[23:11:04] [BUS 1 ] Kierowca: PAS 0 - bilet OK.
+[23:11:04] [BUS 1 ] Wsiadł PAS 0 (PID=90174, wiek=26) +rower. Miejsca: 2/10, Rowery: 1/3
+[23:11:04] [BUS 1 ] Kierowca: PAS 3 - bilet OK.
+[23:11:04] [BUS 1 ] Wsiadł PAS 3 (PID=90247, wiek=50) z dzieckiem (wiek=6). Miejsca: 4/10, Rowery: 1/3
+[23:11:04] [BUS 1 ] Kierowca: PAS 5 - bilet OK.
+[23:11:04] [BUS 1 ] Wsiadł PAS 5 (PID=90282, wiek=29). Miejsca: 5/10, Rowery: 1/3
+[23:11:05] [PAS 8 ] Wszedl na dworzec (wiek=32, rower). PID=90343
+[23:11:05] [PAS 8 ] Kolejka do KASA 1. PID=90343
+[23:11:05] [KASA 1] Obsluguje PAS 8 (wiek=32, biletow=1)
+[23:11:05] [KASA 1] Sprzedano 1 bilet(y) PAS 8
+[23:11:05] [PAS 8 ] Kupil 1 bilet(y) w KASA 1. PID=90343
+[23:11:05] [BUS 3 ] Czeka na peron. PID=90172
+[23:11:05] [BUS 1 ] Kierowca: PAS 8 - bilet OK.
+[23:11:05] [BUS 1 ] Wsiadł PAS 8 (PID=90343, wiek=32) +rower. Miejsca: 5/10, Rowery: 2/3
+[23:11:06] [PAS 9 ] Wszedl na dworzec (wiek=49). PID=90371
+[23:11:06] [PAS 9 ] Kolejka do KASA 1. PID=90371
+[23:11:06] [KASA 1] Obsluguje PAS 9 (wiek=49, biletow=1)
+[23:11:07] [KASA 1] Sprzedano 1 bilet(y) PAS 9
+[23:11:07] [PAS 9 ] Kupil 1 bilet(y) w KASA 1. PID=90371
+[23:11:07] [BUS 1 ] Kierowca: PAS 9 - bilet OK.
+[23:11:07] [BUS 1 ] Wsiadł PAS 9 (PID=90371, wiek=49). Miejsca: 6/10, Rowery: 2/3
+[23:11:08] [PAS 10] Wszedl na dworzec (wiek=65). PID=90419
+[23:11:08] [PAS 10] Kolejka do KASA 1. PID=90419
+[23:11:08] [KASA 1] Obsluguje PAS 10 (wiek=65, biletow=1)
+[23:11:09] [KASA 1] Sprzedano 1 bilet(y) PAS 10
+[23:11:09] [PAS 10] Kupil 1 bilet(y) w KASA 1. PID=90419
+[23:11:09] [BUS 1 ] Kierowca: PAS 10 - bilet OK.
+[23:11:09] [BUS 1 ] Wsiadł PAS 10 (PID=90419, wiek=65). Miejsca: 7/10, Rowery: 2/3
+[23:11:09] [BUS 1 ] ODJAZD! Zabrał 9 osób. W trasie: 9. PID=90169
+[23:11:09] [BUS 1 ] W trasie (21930ms). PID=90169
+[23:11:09] [BUS 3 ] [Kurs #1] Na peronie. PID=90172, Miejsca: 0/10, Rowery: 0/3
+[23:11:09] [PAS 11] Wszedl na dworzec (wiek=78). PID=90427
+[23:11:09] [PAS 11] Kolejka do KASA 1. PID=90427
+[23:11:09] [KASA 1] Obsluguje PAS 11 (wiek=78, biletow=1)
+[23:11:10] [DYSP  ] >>> SIGUSR1: Wymuszam odjazd BUS PID=90172 <<<
+[23:11:10] [BUS 3 ] >>> WYMUSZONY ODJAZD (SIGUSR1)! PID=90172 <<<
+[23:11:10] [BUS 3 ] ODJAZD! Zabrał 0 osób. W trasie: 9. PID=90172
+[23:11:10] [BUS 3 ] W trasie (21708ms). PID=90172
+[23:11:10] [BUS 2 ] [Kurs #1] Na peronie. PID=90170, Miejsca: 0/10, Rowery: 0/3
+[23:11:10] [KASA 1] Sprzedano 1 bilet(y) PAS 11
+[23:11:10] [PAS 11] Kupil 1 bilet(y) w KASA 1. PID=90427
+[23:11:10] [BUS 2 ] Kierowca: PAS 11 - bilet OK.
+[23:11:10] [BUS 2 ] Wsiadł PAS 11 (PID=90427, wiek=78). Miejsca: 1/10, Rowery: 0/3
+[23:11:10] [PAS 12] Wszedl na dworzec (wiek=16). PID=90450
+[23:11:10] [PAS 12] Kolejka do KASA 1. PID=90450
+[23:11:10] [KASA 1] Obsluguje PAS 12 (wiek=16, biletow=1)
+[23:11:11] [KASA 1] Sprzedano 1 bilet(y) PAS 12
+[23:11:11] [PAS 12] Kupil 1 bilet(y) w KASA 1. PID=90450
+[23:11:11] [BUS 2 ] Kierowca: PAS 12 - bilet OK.
+[23:11:11] [BUS 2 ] Wsiadł PAS 12 (PID=90450, wiek=16). Miejsca: 2/10, Rowery: 0/3
+[23:11:12] [PAS 13] Wszedl na dworzec (wiek=10, rower). PID=90546
+[23:11:12] [PAS 13] Kolejka do KASA 1. PID=90546
+[23:11:12] [KASA 1] Obsluguje PAS 13 (wiek=10, biletow=1)
+[23:11:13] [KASA 1] Sprzedano 1 bilet(y) PAS 13
+[23:11:13] [PAS 13] Kupil 1 bilet(y) w KASA 1. PID=90546
+[23:11:13] [BUS 2 ] Kierowca: PAS 13 - bilet OK.
+[23:11:13] [BUS 2 ] Wsiadł PAS 13 (PID=90546, wiek=10) +rower. Miejsca: 2/10, Rowery: 1/3
+[23:11:13] [PAS 14] Opiekun (wiek=58) + dziecko PAS 6 (4 lat) - wchodza. PID=90558
+[23:11:13] [PAS 14] Kolejka do KASA 1. PID=90558
+[23:11:13] [KASA 1] Obsluguje PAS 14 (wiek=58, biletow=2)
+[23:11:13] [PAS 6 ] Dziecko: opiekun przyszedl - wchodzimy! PID=90317
+[23:11:14] [KASA 1] Sprzedano 2 bilet(y) PAS 14
+[23:11:14] [PAS 14] Kupil 2 bilet(y) w KASA 1. PID=90558
+[23:11:14] [BUS 2 ] Kierowca: PAS 14 - bilet OK.
+[23:11:14] [BUS 2 ] Wsiadł PAS 14 (PID=90558, wiek=58) z dzieckiem (wiek=4). Miejsca: 4/10, Rowery: 1/3
+[23:11:15] [PAS 15] Wszedl na dworzec (wiek=11). PID=90590
+[23:11:15] [PAS 15] Kolejka do KASA 1. PID=90590
+[23:11:15] [KASA 1] Obsluguje PAS 15 (wiek=11, biletow=1)
+[23:11:15] [BUS 2 ] ODJAZD! Zabrał 5 osób. W trasie: 14. PID=90170
+[23:11:15] [BUS 2 ] W trasie (16697ms). PID=90170
+[23:11:15] [KASA 1] Sprzedano 1 bilet(y) PAS 15
+[23:11:15] [PAS 15] Kupil 1 bilet(y) w KASA 1. PID=90590
+[23:11:16] [BUS 3 ] Pasazerowie wysiedli (0). PID=90172
+[23:11:16] [DYSP  ] Zamykanie symulacji...
+[23:11:16] [BUS 2 ] Pasazerowie wysiedli (5). PID=90170
+[23:11:16] [BUS 1 ] Pasazerowie wysiedli (9). PID=90169
+[23:11:16] [KASA 1] Zamknieta. Obsluzono: 13. TID=281473077002720
+[23:11:16] [BUS 3 ] KONIEC. Kursow: 1, Przewiezionych: 0. PID=90172
+[23:11:16] [DYSP  ] Czekam na zakonczenie...
+[23:11:16] [BUS 2 ] KONIEC. Kursow: 1, Przewiezionych: 5. PID=90170
+[23:11:16] [BUS 1 ] KONIEC. Kursow: 1, Przewiezionych: 9. PID=90169
+[23:11:16] [KASA  ] Wszystkie kasy zamkniete. PID=90168
+[23:11:17] [STAT  ] ========================================
+[23:11:17] [STAT  ] PODSUMOWANIE
+[23:11:17] [STAT  ] ========================================
+[23:11:17] [STAT  ] Pasazerow: 16
+[23:11:17] [STAT  ] Przewiezionych: 14
+[23:11:17] [STAT  ] Biletow: 15
+[23:11:17] [STAT  ] VIP: 0
+[23:11:17] [STAT  ] Bez biletu: 0
+[23:11:17] [STAT  ] KASA 1: 13
+[23:11:17] [STAT  ] ========================================
+
+========================================
+       RAPORT KONCOWY SYMULACJI
+========================================
+Pasazerow: 16
+Przewiezionych: 14
+Biletow: 15
+VIP: 0
+========================================
+KASA 1 obsluzyla: 13 pasazerow
+[23:11:17] [MAIN  ] Koniec.
