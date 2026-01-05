@@ -31,7 +31,10 @@ static int czy_zakonczyc(SharedData *shm) {
     if (!shm->stacja_otwarta && shm->pasazerow_w_trasie <= 0) return 1;
     return 0;
 }
+
+
 //proces_autobus - Główna funkcja autobusu
+
 void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     srand(time(NULL) ^ getpid());
     
@@ -94,29 +97,34 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
         //ZAJĘCIE PERONU 
         log_print(KOLOR_BUS, tag, "Czeka na peron. PID=%d", getpid());
+
         // Non-blocking czekanie na peron (mozna przerwac)
         // struct sembuf zajmij_nowait = {SEM_BUS_STOP, -1, IPC_NOWAIT};
         struct sembuf zajmij_nowait = {SEM_BUS_STOP, -1, IPC_NOWAIT | SEM_UNDO};
-        while (bus_running) {
-        if (semop(sem_id, &zajmij_nowait, 1) == 0) break;  // Zajęto peron
-        if (errno != EAGAIN) { 
-            perror("bus semop zajmij_peron"); 
-            break; 
+        int proba_peronu = 0;
+        while (proba_peronu < 100 && bus_running) {
+            if (semop(sem_id, &zajmij_nowait, 1) == 0) break;
+            if (errno != EAGAIN) { perror("bus semop zajmij_peron"); break; }
+            if (czy_zakonczyc(shm)) {
+                log_print(KOLOR_BUS, tag, "Warunki zakonczenia podczas czekania - koncze. PID=%d", getpid());
+                goto koniec;
+            }
+            usleep(100000); // 100ms
+            proba_peronu++;
         }
-        if (czy_zakonczyc(shm)) {
-            log_print(KOLOR_BUS, tag, "Warunki zakonczenia podczas czekania - koncze. PID=%d", getpid());
-            goto koniec;
-        }
-        usleep(100000); // 100ms między próbami (bez limitu prób)
-    }
+        
+        if (proba_peronu >= 100) continue; // timeout, probuj ponownie
+
         if (czy_zakonczyc(shm)) {
             semop(sem_id, &zwolnij_peron, 1);
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia po zajeciu peronu - koncze. PID=%d", getpid());
             break;
         }
+
         //AUTOBUS NA PERONIE 
         kursow++;
         wymuszony_odjazd = 0;
+
         // Aktualizacja stanu 
         struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
         struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
@@ -282,6 +290,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             break;
         }
     }
+
     koniec:
     log_print(KOLOR_BUS, tag, "KONIEC. Kursow: %d, Przewiezionych: %d. PID=%d",
               kursow, przewiezionych, getpid());

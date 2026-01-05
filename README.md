@@ -47,11 +47,4 @@ PROJEKT_SO/
 │   ├── devcontainer.json   
 │   ├── Dockerfile 
 │   └── reinstall-cmake.sh
-
-
-## Makefile
-make        - kompilacja wszystkiego
-make run    - uruchomienie (domyslne parametry)
-make clean  - czyszczenie
-make clean-ipc - czyszczenie zasobow IPC
 ```

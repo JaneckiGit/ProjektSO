@@ -44,7 +44,7 @@
 #define SEM_BUS_STOP     2 // peron - tylko jeden autobus
 #define SEM_LOG          3 //Log
 #define SEM_SHM          4 // pamięć dzielona
-#define SEM_COUNT        5 // liczba semaforów przed kasami
+#define SEM_COUNT   5 // liczba semaforów przed kasami
 
 // Struktura dziecka czekającego na rodzica
 //Czekajace Dziecko - dziecko <8 lat czekające PRZED dworcem na opiekuna
