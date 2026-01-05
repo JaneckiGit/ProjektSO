@@ -4,16 +4,29 @@ BIN="./bin/autobus_main"
 cleanup() { ipcrm -a 2>/dev/null || true; }
 
 test1() {
-    echo "=== TEST 1: Obciążeniowy (N=2 P=5 R=2 T=3000 K=1) ==="
+    echo "=== TEST 1: Obciążeniowy - czy są odmowy przy małej pojemności? ==="
     cleanup
-    timeout 60s $BIN 2 5 2 3000 1 || true
+    timeout 30s $BIN 2 5 2 3000 1
+    
+    # Sprawdź czy były odmowy (oczekiwane!)
+    if grep -q "Odmowa" raport.txt; then
+        echo "[PASS] Wykryto odmowy - system poprawnie obsługuje przepełnienie"
+    else
+        echo "[FAIL] Brak odmów - przy P=5 powinny być!"
+    fi
     cleanup
 }
 
 test2() {
-    echo "=== TEST 2: Rowerzyści (N=3 P=10 R=2 T=5000 K=2) ==="
+    echo "=== TEST 2: Czy rowerzyści są odmawiani gdy R=2? ==="
     cleanup
-    timeout 45s $BIN 3 10 2 5000 2 || true
+    timeout 30s $BIN 3 10 2 4000 1
+    
+    if grep -q "brak miejsc rowerowych" raport.txt; then
+        echo "[PASS] Rowerzyści odmawiani gdy brak miejsc"
+    else
+        echo "[INFO] Brak odmów rowerowych (może za mało rowerzystów)"
+    fi
     cleanup
 }
 
