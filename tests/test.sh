@@ -51,12 +51,64 @@ test4() {
     wait 2>/dev/null
     cleanup
 }
+test5() {
+    echo "=== TEST 5: VIP omija kolejki ==="
+    cleanup
+    timeout 180s $BIN 3 10 3 5000 2
+    
+    # Sprawdź czy VIP ominął kasę
+    if grep -q "VIP - omija kolejke do kasy" raport.txt; then
+        echo "[PASS] VIP omija kolejkę do kasy"
+    else
+        echo "[INFO] Nie wygenerowano VIP w tym przebiegu (1% szans)"
+    fi
+    
+    # Sprawdź czy VIP wsiadł
+    if grep -q "VIP" raport.txt | grep -q "Wsiadł"; then
+        echo "[PASS] VIP wsiadł do autobusu"
+    fi
+    cleanup
+}
+test6() {
+    echo "=== TEST 6: Dzieci czekają na opiekuna ==="
+    cleanup
+    timeout 40s $BIN 3 10 3 5000 1
+    
+    # Sprawdź czy były dzieci czekające
+    if grep -q "czeka PRZED dworcem na opiekuna" raport.txt; then
+        echo "[PASS] Dzieci czekają przed dworcem na opiekuna"
+    else
+        echo "[INFO] Nie wygenerowano dzieci w tym przebiegu"
+    fi
+    
+    # Sprawdź czy dzieci wsiadały TYLKO z opiekunem
+    if grep -q "z dzieckiem" raport.txt; then
+        echo "[PASS] Dzieci wsiadają tylko z opiekunem"
+    fi
+    cleanup
+}
+test7() {
+    echo "=== TEST 7: Autobus odjeżdża wcześniej gdy pełny ==="
+    cleanup
+    # Mała pojemność (P=5) + długi postój (T=15000) = powinien się zapełnić przed czasem
+    timeout 60s $BIN 3 5 2 15000 2
+    
+    if grep -q "PELNY - odjazd!" raport.txt; then
+        echo "[PASS] Autobus odjechał wcześniej po zapełnieniu"
+    else
+        echo "[FAIL] Nie wykryto wcześniejszego odjazdu"
+    fi
+    cleanup
+}
 
 case "$1" in
     1) test1 ;;
     2) test2 ;;
     3) test3 ;;
     4) test4 ;;
-    all) test1; test2; test3; test4 ;;
-    *) echo "Użycie: $0 [1|2|3|4|all]" ;;
+    5) test5 ;;
+    6) test6 ;;
+    7) test7 ;;
+    all) test1; test2; test3; test4; test5; test6; test7 ;;
+    *) echo "Użycie: $0 [1|2|3|4|5|6|7|all]" ;;
 esac

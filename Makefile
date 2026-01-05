@@ -73,8 +73,17 @@ test3: all
 test4: all
 	@./tests/test.sh 4
 
+test5: all
+	@./tests/test.sh 5
+
+test6: all
+	@./tests/test.sh 6
+
+test7: all
+	@./tests/test.sh 7
+
 test-all: all
 	@./tests/test.sh all
 
 .PHONY: all directories run clean clean-ipc
-.PHONY: all directories run clean clean-ipc test1 test2 test3 test4 test-all
+.PHONY: all directories run clean clean-ipc test1 test2 test3 test4 test5 test6 test7test-all
