@@ -17,7 +17,6 @@ static volatile sig_atomic_t bus_running = 1;
 
 
 //Handler sygnałów autobusu
- 
 static void handler_bus(int sig) {
     if (sig == SIGUSR1) {
         wymuszony_odjazd = 1;
@@ -79,7 +78,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         // JAZDA NA PETLE
         int czas_dojazdu;
         if (kursow == 0) {
-            czas_dojazdu = losuj(1000, 3000);  // Pierwszy kurs: 2-4s
+            czas_dojazdu = losuj(1000, 2000);  // Pierwszy kurs: 1-2s
         } else {
             czas_dojazdu = losuj(8000, 15000); // Kolejne: 8-15s
         }

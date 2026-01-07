@@ -64,6 +64,7 @@ static void shutdown_children(void) {
     //Kasa 
     if (pid_kasa > 0) {
         kill(pid_kasa, SIGTERM);
+
     }
 
     //Autobusy 

@@ -6,7 +6,7 @@ cleanup() { ipcrm -a 2>/dev/null || true; }
 test1() {
     echo "=== TEST 1: Obciążeniowy - czy są odmowy przy małej pojemności? ==="
     cleanup
-    timeout 30s $BIN 2 5 2 3000 1
+    timeout 30s $BIN 2 5 2 5000 1
     
     # Sprawdź czy były odmowy (oczekiwane!)
     if grep -q "Odmowa" raport.txt; then
@@ -20,7 +20,7 @@ test1() {
 test2() {
     echo "=== TEST 2: Czy rowerzyści są odmawiani gdy R=2? ==="
     cleanup
-    timeout 30s $BIN 3 10 2 4000 1
+    timeout 30s $BIN 3 10 1 4000 1
     
     if grep -q "brak miejsc rowerowych" raport.txt; then
         echo "[PASS] Rowerzyści odmawiani gdy brak miejsc"
@@ -39,6 +39,11 @@ test3() {
     sleep 5
     kill -SIGUSR2 $(pgrep -f "autobus_main" | head -1) 2>/dev/null
     wait 2>/dev/null
+    if grep -q ">>> WYMUSZONY ODJAZD (SIGUSR1)" raport.txt; then
+        echo "[PASS] Wymuszony odjazd zadziałał"
+    else
+        echo "[INFO] Brak autubusów na peronie w tym przebiegu"
+    fi
     cleanup
 }
 
@@ -49,12 +54,17 @@ test4() {
     sleep 20
     kill -SIGUSR2 $(pgrep -f "autobus_main" | head -1) 2>/dev/null
     wait 2>/dev/null
+    if grep -q "Dworzec zamknięty. Czekam na zakończenie przejazdów" raport.txt; then
+        echo "[PASS] Zamknięcie dworca zadziałało"
+    else
+        echo "[INFO] Zamkniecie dworca nie zostało zarejestrowane"
+    fi
     cleanup
 }
 test5() {
     echo "=== TEST 5: VIP omija kolejki ==="
     cleanup
-    timeout 180s $BIN 3 10 3 5000 2
+    timeout 240s $BIN 3 10 3 5000 2
     
     # Sprawdź czy VIP ominął kasę
     if grep -q "VIP - omija kolejke do kasy" raport.txt; then

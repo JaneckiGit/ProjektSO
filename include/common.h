@@ -42,7 +42,7 @@
 #define SEM_DOOR_NORMAL  0 // drzwi do autobusu
 #define SEM_DOOR_ROWER   1 // drzwi do autobusu z rowerem
 #define SEM_BUS_STOP     2 // peron - tylko jeden autobus
-#define SEM_LOG          3 //Log
+#define SEM_LOG          3 // Log
 #define SEM_SHM          4 // pamięć dzielona
 #define SEM_COUNT        5 // liczba semaforów przed kasami
 
@@ -130,10 +130,10 @@ extern int msg_id; // id kolejki wiadomości dla autobusów
 extern int msg_kasa_id; // id kolejki wiadomości dla kas
 
 // Funkcje pomocnicze
-void log_print(const char* kolor, const char* tag, const char* fmt, ...);
-int losuj(int min, int max);
-void msleep(int ms);
-void get_timestamp(char* buf, size_t size);
+void log_print(const char* kolor, const char* tag, const char* fmt, ...);// Logi z kolorami i tagami
+int losuj(int min, int max);// Losowa liczba z zakresu [min, max]
+void msleep(int ms);// Uspienie na ms milisekund
+void get_timestamp(char* buf, size_t size);// Pobranie aktualnego timestampu
 int init_ipc_client(void);  // dla procesow potomnych
 
 #endif

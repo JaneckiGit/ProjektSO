@@ -47,11 +47,152 @@ PROJEKT_SO/
 │   ├── devcontainer.json   
 │   ├── Dockerfile 
 │   └── reinstall-cmake.sh
+```
 
 
 ## Makefile
+```
 make        - kompilacja wszystkiego
 make run    - uruchomienie (domyslne parametry)
 make clean  - czyszczenie
 make clean-ipc - czyszczenie zasobow IPC
 ```
+
+## Przykład użycia sygnałów
+'''
+# Uruchom symulację
+./bin/autobus_main 3 10 3 5000 2 &
+
+# Sprawdź PID dyspozytora
+pgrep -f autobus_main
+
+# Wymuś odjazd autobusu z peronu
+kill -SIGUSR1 <PID>
+
+# Zamknij dworzec (pasażerowie w trasie dojadą do celu)
+kill -SIGUSR2 <PID>
+'''
+
+## Hierarchia procesów
+'''
+autobus_main (dyspozytor) ─── PID główny
+    │
+    ├── kasa ─────────────── proces wielowątkowy
+    │   ├── wątek KASA 1
+    │   ├── wątek KASA 2
+    │   └── ... (K wątków)
+    │
+    ├── autobus (BUS 1) ──── osobny proces
+    ├── autobus (BUS 2)
+    └── ... (N autobusów)
+    │
+    └── pasazer (generator) ─ tworzy pasażerów dynamicznie
+        ├── pasazer (PAS 0) ─ normal/dziecko/rodzic
+        ├── pasazer (PAS 1)
+        └── ... (tworzeni co 800-2000ms)
+'''
+## SEMAFORY
+'''
+Semafory
+Nazwa             Indeks      Opis
+SEM_DOOR_NORMAL   0           Kontrola wejścia do autobusu (miejsca normalne)
+SEM_DOOR_ROWER    1           Kontrola wejścia do autobusu (miejsca rowerowe)
+SEM_BUS_STOP      2           Peron - tylko jeden autobus może stać
+SEM_LOG           3           Sekcja krytyczna logów
+SEM_SHM           4           Ochrona dostępu do pamięci dzielonej
+'''
+## Typy pasażerów
+'''
+Typ         Wiek       Opis                                  Prawdopodobieństwo
+Normal      9-80 lat   Dorosły pasażer, kupuje 1 bilet       ~45% 
+Dziecko     1-7 lat.   Czeka PRZED dworcem na opiekuna.      15%
+Rodzic      18-80 lat  Zabiera dziecko, kupuje 2 bilety.     40% (gdy są dzieci)
+VIP         dowolny.    Omija kolejki do kasy i autobusu.     1%
+Rowerzysta  dowolny.   Zajmuje miejsce w puli rowerowej.     25%
+'''
+## Użyte funkcje systemowe
+'''
+# Procesy
+
+-fork(), execl(), wait(), waitpid(), exit()
+
+# Wątki
+
+-pthread_create(), pthread_join(), pthread_mutex_lock/unlock(), pthread_cond_wait/broadcast()
+
+# Sygnały
+
+-sigaction(), kill(), sigemptyset()
+
+# Semafory SysV
+
+-ftok(), semget(), semctl(), semop()
+
+# Pamięć dzielona SysV
+
+-shmget(), shmat(), shmdt(), shmctl()
+
+# Kolejki komunikatów SysV
+
+-msgget(), msgsnd(), msgrcv(), msgctl()
+
+# Pliki
+
+-creat(), open(), write(), close()
+'''
+
+## Konfigurowalne parametry symulacji
+
+# Parametry uruchomieniowe
+
+| Parametr | Domyślna wartość | Opis | Link |
+|----------|------------------|------|------|
+| `N` | 3 | Liczba autobusów | [src/main.c#L8](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L8) |
+| `P` | 10 | Pojemność autobusu (miejsca normalne) | [src/main.c#L9](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L9) |
+| `R` | 3 | Miejsca na rowery | [src/main.c#L10](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L10) |
+| `T` | 5000 | Czas postoju na peronie [ms] | [src/main.c#L11](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L11) |
+| `K` | 1 (DEFAULT_K) | Liczba kas biletowych | [src/main.c#L12](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L12) |
+
+# Stałe konfiguracyjne
+
+| Stała | Wartość | Opis | Link |
+|-------|---------|------|------|
+| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | [include/common.h#L23](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L23) |
+| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | [include/common.h#L24](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L24) |
+| `MAX_REGISTERED` | 1000 | Maks. zarejestrowanych pasażerów | [include/common.h#L25](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L25) |
+| `MAX_CZEKAJACE_DZIECI` | 100 | Maks. dzieci czekających | [include/common.h#L26](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L26) |
+| `MAX_KASY` | 10 | Maksymalna liczba kas | [include/common.h#L27](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L27) |
+| `DEFAULT_K` | 1 | Domyślna liczba kas | [include/common.h#L28](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L28) |
+
+# Parametry autobusu
+
+| Parametr | Wartość | Opis | Link |
+|----------|---------|------|------|
+| `czas_trasy_Ti` | losuj(15000, 30000) | Czas trasy [ms] | [src/bus.c#L38](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L38) |
+| `czas_dojazdu` (1. kurs) | losuj(1000, 2000) | Dojazd na pętlę [ms] | [src/bus.c#L81](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L81) |
+| `czas_dojazdu` (kolejne) | losuj(8000, 15000) | Dojazd na pętlę [ms] | [src/bus.c#L83](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L83) |
+
+# Parametry pasażerów
+
+| Parametr | Wartość | Opis | Link |
+|----------|---------|------|------|
+| Wiek dorosłego | losuj(9, 80) | Zakres wieku normal | [src/pasazer.c#L156](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L156) |
+| Szansa na VIP | 1% | Prawdop. VIP | [src/pasazer.c#L157](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L157) |
+| Szansa na rower | 25% | Prawdop. rowerzysty | [src/pasazer.c#L158](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L158) |
+| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L199](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L199) |
+| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L244](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L244) |
+| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L305](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L305) |
+
+# Parametry kasy
+
+| Parametr | Wartość | Opis | Link |
+|----------|---------|------|------|
+| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | [src/kasa.c#L53](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L53) |
+
+#Prawdopodobieństwa typów pasażerów
+
+| Typ | Warunek | Prawdopodobieństwo | Link |
+|-----|---------|-------------------|------|
+| Dziecko | `los <= 15` | 15% | [src/pasazer.c#L284](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L284) |
+| Rodzic | `los <= 55 && dzieci > 0` | 40% | [src/pasazer.c#L286](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L286) |
+| Normal | reszta | ~45% | [src/pasazer.c#L289](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L289) |

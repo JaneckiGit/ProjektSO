@@ -1,3 +1,4 @@
+// dyspozytor.h - Definicje funkcji dyspozytora
 #ifndef DYSPOZYTOR_H
 #define DYSPOZYTOR_H
 

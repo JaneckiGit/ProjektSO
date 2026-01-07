@@ -1,3 +1,4 @@
+// pasazer.h - Definicje funkcji procesów pasażerów, dzieci i rodziców
 #ifndef PASAZER_H
 #define PASAZER_H
 

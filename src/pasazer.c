@@ -151,7 +151,7 @@ void proces_pasazer(int id_pas) {
 
     int wiek = losuj(9, 80);
     int czy_vip = (losuj(1, 100) == 1);
-    int czy_rower = (losuj(1, 100) <= 15);
+    int czy_rower = (losuj(1, 100) <= 25);
 
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};

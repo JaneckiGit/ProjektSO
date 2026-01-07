@@ -13,6 +13,8 @@ int msg_kasa_id = -1;
 
 // get_timestamp - Timestamp w formacie HH:MM:SS
 void get_timestamp(char* buf, size_t size) {
+    setenv("TZ", "Europe/Warsaw", 1); 
+    tzset();                            
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
     strftime(buf, size, "%H:%M:%S", t);
