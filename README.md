@@ -91,25 +91,6 @@ autobus_main (dyspozytor) ─── PID główny
         ├── pasazer (PAS 1)
         └── ... (tworzeni co 800-2000ms)
 '''
-## SEMAFORY
-'''
-Semafory
-Nazwa             Indeks      Opis
-SEM_DOOR_NORMAL   0           Kontrola wejścia do autobusu (miejsca normalne)
-SEM_DOOR_ROWER    1           Kontrola wejścia do autobusu (miejsca rowerowe)
-SEM_BUS_STOP      2           Peron - tylko jeden autobus może stać
-SEM_LOG           3           Sekcja krytyczna logów
-SEM_SHM           4           Ochrona dostępu do pamięci dzielonej
-'''
-## Typy pasażerów
-'''
-Typ         Wiek       Opis                                  Prawdopodobieństwo
-Normal      9-80 lat   Dorosły pasażer, kupuje 1 bilet       ~45% 
-Dziecko     1-7 lat.   Czeka PRZED dworcem na opiekuna.      15%
-Rodzic      18-80 lat  Zabiera dziecko, kupuje 2 bilety.     40% (gdy są dzieci)
-VIP         dowolny.    Omija kolejki do kasy i autobusu.     1%
-Rowerzysta  dowolny.   Zajmuje miejsce w puli rowerowej.     25%
-'''
 ## Użyte funkcje systemowe
 '''
 # Procesy
@@ -147,22 +128,22 @@ Rowerzysta  dowolny.   Zajmuje miejsce w puli rowerowej.     25%
 
 | Parametr | Domyślna wartość | Opis | Link |
 |----------|------------------|------|------|
-| `N` | 3 | Liczba autobusów | [src/main.c#L8](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L8) |
-| `P` | 10 | Pojemność autobusu (miejsca normalne) | [src/main.c#L9](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L9) |
-| `R` | 3 | Miejsca na rowery | [src/main.c#L10](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L10) |
-| `T` | 5000 | Czas postoju na peronie [ms] | [src/main.c#L11](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L11) |
-| `K` | 1 (DEFAULT_K) | Liczba kas biletowych | [src/main.c#L12](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L12) |
+| `N` | 3 | Liczba autobusów | [src/main.c#L9](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L9) |
+| `P` | 10 | Pojemność autobusu (miejsca normalne) | [src/main.c#L10](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L10) |
+| `R` | 3 | Miejsca na rowery | [src/main.c#L11](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L11) |
+| `T` | 5000 | Czas postoju na peronie [ms] | [src/main.c#L12](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L12) |
+| `K` | 1 (DEFAULT_K) | Liczba kas biletowych | [src/main.c#L13](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L13) |
 
 # Stałe konfiguracyjne
 
 | Stała | Wartość | Opis | Link |
 |-------|---------|------|------|
-| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | [include/common.h#L23](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L23) |
-| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | [include/common.h#L24](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L24) |
-| `MAX_REGISTERED` | 1000 | Maks. zarejestrowanych pasażerów | [include/common.h#L25](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L25) |
-| `MAX_CZEKAJACE_DZIECI` | 100 | Maks. dzieci czekających | [include/common.h#L26](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L26) |
-| `MAX_KASY` | 10 | Maksymalna liczba kas | [include/common.h#L27](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L27) |
-| `DEFAULT_K` | 1 | Domyślna liczba kas | [include/common.h#L28](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L28) |
+| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | [include/common.h#L25](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L25) |
+| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | [include/common.h#L26](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L26) |
+| `MAX_REGISTERED` | 1000 | Maks. zarejestrowanych pasażerów | [include/common.h#L27](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L27) |
+| `MAX_CZEKAJACE_DZIECI` | 100 | Maks. dzieci czekających | [include/common.h#L28](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L28) |
+| `MAX_KASY` | 10 | Maksymalna liczba kas | [include/common.h#L29](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L29) |
+| `DEFAULT_K` | 1 | Domyślna liczba kas | [include/common.h#L30](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L30) |
 
 # Parametry autobusu
 
@@ -176,23 +157,23 @@ Rowerzysta  dowolny.   Zajmuje miejsce w puli rowerowej.     25%
 
 | Parametr | Wartość | Opis | Link |
 |----------|---------|------|------|
-| Wiek dorosłego | losuj(9, 80) | Zakres wieku normal | [src/pasazer.c#L156](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L156) |
-| Szansa na VIP | 1% | Prawdop. VIP | [src/pasazer.c#L157](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L157) |
-| Szansa na rower | 25% | Prawdop. rowerzysty | [src/pasazer.c#L158](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L158) |
-| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L199](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L199) |
-| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L244](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L244) |
-| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L305](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L305) |
+| Wiek dorosłego | losuj(9, 80) | Zakres wieku normal | [src/pasazer.c#L152](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L152) |
+| Szansa na VIP | 1% | Prawdop. VIP | [src/pasazer.c#L153](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L153) |
+| Szansa na rower | 25% | Prawdop. rowerzysty | [src/pasazer.c#L154](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L154) |
+| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L196](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L196) |
+| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L265](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L265) |
+| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L353](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L353) |
 
 # Parametry kasy
 
 | Parametr | Wartość | Opis | Link |
 |----------|---------|------|------|
-| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | [src/kasa.c#L53](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L53) |
+| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | [src/kasa.c#L52](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L52) |
 
 #Prawdopodobieństwa typów pasażerów
 
 | Typ | Warunek | Prawdopodobieństwo | Link |
 |-----|---------|-------------------|------|
-| Dziecko | `los <= 15` | 15% | [src/pasazer.c#L284](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L284) |
-| Rodzic | `los <= 55 && dzieci > 0` | 40% | [src/pasazer.c#L286](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L286) |
-| Normal | reszta | ~45% | [src/pasazer.c#L289](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L289) |
+| Dziecko | `los <= 15` | 15% | [src/pasazer.c#L341](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L341) |
+| Rodzic | `los <= 55 && dzieci > 0` | 40% | [src/pasazer.c#L343](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L343) |
+| Normal | reszta | ~45% | [src/pasazer.c#L346](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L346) |
