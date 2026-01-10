@@ -122,6 +122,16 @@ typedef struct {
     int sukces;              // 1 = bilet kupiony
 } KasaResponse;
 
+// Dane dla wątku dziecka (używane w pasazer.c)
+// Struktura przekazywana do pthread_create() gdy rodzic tworzy wątek dziecka
+typedef struct {
+    int id_dziecka;              // ID pasażera-dziecka
+    int wiek_dziecka;            // Wiek dziecka (1-7 lat)
+    pthread_mutex_t *mutex;      // Mutex do synchronizacji
+    pthread_cond_t *cond;        // Zmienna warunkowa
+    volatile int *zakoncz;       // Flaga zakończenia (1 = koniec podróży)
+} DzieckoWatekData;
+
 // Zmienne IPC
 extern int sem_id; // id semaforów
 extern int shm_id; // id pamięci dzielonej

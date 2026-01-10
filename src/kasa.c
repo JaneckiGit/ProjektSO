@@ -1,7 +1,12 @@
 // kasa.c - Moduł kasy biletowej (jako osobny proces)
 // Każda kasa = osobny proces
 // Komunikacja przez kolejkę komunikatów msg_kasa_id
-
+// Funkcje systemowe:
+// - fork(), exec() - tworzenie procesu (w dyspozytor.c)
+// - sigaction() - obsługa sygnałów SIGINT/SIGTERM
+// - shmat(), shmdt() - pamięć dzielona
+// - semop() - semafory (ochrona sekcji krytycznej)
+// - msgrcv(), msgsnd() - kolejki komunikatów
 #include "common.h"
 #include "kasa.h"
 

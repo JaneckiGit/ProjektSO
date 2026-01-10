@@ -8,7 +8,7 @@
 
 
 // PID-y procesow potomnych
-static pid_t pids_kasy[MAX_KASY];  // PID-y kas biletowych
+static pid_t pids_kasy[MAX_KASY] = {0}; // PID-y kas biletowych
 static int ile_kas = 0;            // Liczba kas
 static pid_t pids_busy[MAX_BUSES];//PID-y autobusow
 static int ile_busow = 0; //Liczba autobusow
@@ -178,7 +178,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     }
 
     // START
-    log_print(KOLOR_MAIN, "MAIN", "START: N=%d P=%d R=%d T=%d K=%d", N, P, R, T, K);    log_print(KOLOR_DYSP, "DYSP", "Dyspozytor rozpoczął pracę. PID=%d", getpid());
+    log_print(KOLOR_MAIN, "MAIN", "START: N=%d P=%d R=%d T=%d K=%d", N, P, R, T, K);
+    log_print(KOLOR_DYSP, "DYSP", "Dyspozytor rozpoczął pracę. PID=%d", getpid());
     log_print(KOLOR_DYSP, "DYSP", ">>> Sygnały: kill -SIGUSR1 %d | kill -SIGUSR2 %d <<<", 
               getpid(), getpid());
 
@@ -293,7 +294,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     log_print(KOLOR_DYSP, "DYSP", "Zamykanie symulacji...");
 
     // Oznacz koniec symulacji
-SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
+    SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
     if (s != (void *)-1) {
         s->symulacja_aktywna = false;
         s->stacja_otwarta = false;
@@ -315,7 +316,6 @@ SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         log_print(KOLOR_STAT, "STAT", "Przewiezionych: %d", s->total_przewiezionych);
         log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
         log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
-        log_print(KOLOR_STAT, "STAT", "Bez biletu: %d", s->odrzuconych_bez_biletu);
         for (int i = 0; i < s->param_K; i++) {
             log_print(KOLOR_STAT, "STAT", "KASA %d: %d", i+1, s->obsluzonych_kasa[i]);
         }

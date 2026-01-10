@@ -5,12 +5,35 @@
 //"rodzic" - opiekun 18-80 lat, zabiera dziecko, kupuje 2 bilety
 //VIP (1% szans): omija kolejkę do kasy i ma priorytet w autobusie
 //ROWER zajmuje miejsce w puli rowerowej autobusu
-
 #include "common.h"
 #include "pasazer.h"
 
+// Struktura DzieckoWatekData zdefiniowana w common.h
+// Wątek dziecka - czeka na rodzica, kończy gdy rodzic da sygnał
+static void* watek_dziecko(void* arg) {
+    DzieckoWatekData *d = (DzieckoWatekData *)arg;
+    
+    char tag[16];
+    snprintf(tag, sizeof(tag), "PAS %d", d->id_dziecka);
+    
+    log_print(KOLOR_PAS, tag, "[WATEK] Dziecko (wiek=%d) przejete przez opiekuna. TID=%lu", 
+              d->wiek_dziecka, (unsigned long)pthread_self());
+    
+    // Czekaj na sygnał zakończenia od rodzica
+    pthread_mutex_lock(d->mutex);
+    while (!(*d->zakoncz)) {
+        pthread_cond_wait(d->cond, d->mutex);
+    }
+    pthread_mutex_unlock(d->mutex);
+    
+    log_print(KOLOR_PAS, tag, "[WATEK] Dziecko konczy swoje działanie. TID=%lu", 
+              (unsigned long)pthread_self());
+    
+    return NULL;
+}
+
 // Wysyla bilet do autobusu przez kolejke komunikatow
-static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, int czy_vip, 
+static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, int czy_vip,
                         int ma_bilet, pid_t pid_dziecka, int id_dziecka, int wiek_dziecka) {
     BiletMsg bilet;
     memset(&bilet, 0, sizeof(bilet));
@@ -228,7 +251,7 @@ void proces_dziecko(int id_pas) {
         semop(sem_id, &shm_unlock, 1);
         
         if (ma_rodzica) {
-            log_print(KOLOR_PAS, tag, "Dziecko: opiekun przyszedl - wchodzimy! PID=%d", getpid());
+            // Proces dziecka kończy się - dziecko kontynuuje jako WĄTEK w procesie rodzica
             shmdt(shm);
             exit(0);
         }
@@ -246,7 +269,13 @@ void proces_dziecko(int id_pas) {
     exit(0);
 }
 
-// Rodzic/opiekun ktory zabiera dziecko
+// Rodzic/opiekun który zabiera dziecko (dziecko jako wątek)
+// Mechanizmy pthread:
+// - pthread_create() - tworzy wątek reprezentujący dziecko
+// - pthread_mutex_lock/unlock() - synchronizacja dostępu do flagi zakończenia
+// - pthread_cond_wait() - wątek dziecka czeka na sygnał
+// - pthread_cond_signal() - rodzic budzi wątek dziecka
+// - pthread_join() - rodzic czeka na zakończenie wątku
 void proces_rodzic(int id_pas, int idx_dziecka) {
     srand(time(NULL) ^ getpid());
 
@@ -265,11 +294,10 @@ void proces_rodzic(int id_pas, int idx_dziecka) {
     int wiek = losuj(18, 80);
     int czy_vip = (losuj(1, 100) == 1);
 
-
-
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
+    // Pobierz dane dziecka z pamięci dzielonej
     semop(sem_id, &shm_lock, 1);
     shm->total_pasazerow++;
     shm->pasazerow_czeka += 2;
@@ -285,8 +313,34 @@ void proces_rodzic(int id_pas, int idx_dziecka) {
     log_print(KOLOR_PAS, tag, "Opiekun (wiek=%d)%s + dziecko PAS %d (%d lat) - wchodza. PID=%d",
               wiek, czy_vip ? " VIP" : "", id_dziecka, wiek_dziecka, getpid());
 
+    //DZIECKO JAKO WĄTEK (pthread)
+    pthread_t tid_dziecko = 0;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    volatile int zakoncz = 0;
+    int watek_utworzony = 0;
+    
+    DzieckoWatekData dane_dziecka = {
+        .id_dziecka = id_dziecka,
+        .wiek_dziecka = wiek_dziecka,
+        .mutex = &mutex,
+        .cond = &cond,
+        .zakoncz = &zakoncz
+    };
+    
+    if (pthread_create(&tid_dziecko, NULL, watek_dziecko, &dane_dziecka) != 0) {
+        perror("pthread_create dziecko");
+        log_print(KOLOR_PAS, tag, "BLAD: Nie udalo sie utworzyc watku dziecka. PID=%d", getpid());
+    } else {
+        log_print(KOLOR_PAS, tag, "Dziecko PAS %d jako watek. TID=%lu, PID=%d", 
+                  id_dziecka, (unsigned long)tid_dziecko, getpid());
+        watek_utworzony = 1;
+    }
+
+    // Kupno biletów (2 - dla rodzica i dziecka)
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 2);
 
+    // Rejestracja dziecka w systemie biletowym
     semop(sem_id, &shm_lock, 1);
     if (shm->registered_count < MAX_REGISTERED) {
         shm->registered_pids[shm->registered_count] = pid_dziecka;
@@ -295,8 +349,36 @@ void proces_rodzic(int id_pas, int idx_dziecka) {
     }
     semop(sem_id, &shm_unlock, 1);
 
-    czekaj_na_autobus(shm, tag, id_pas, wiek, 0, czy_vip, ma_bilet, 
-                      pid_dziecka, id_dziecka, wiek_dziecka, 2);
+    // Czekanie na autobus (2 osoby: rodzic + dziecko)
+    int wynik = czekaj_na_autobus(shm, tag, id_pas, wiek, 0, czy_vip, ma_bilet, 
+                                   pid_dziecka, id_dziecka, wiek_dziecka, 2);
+
+    // Opóźnienie - log wsiadania przed zakończeniem wątku
+    if (wynik == 0) {
+        usleep(200000);  // 100ms
+    }
+
+    // Informacja o wyniku podróży
+    if (wynik == 0) {
+        log_print(KOLOR_PAS, tag, "Opiekun + dziecko PAS %d wsiedli do autobusu. PID=%d", 
+                  id_dziecka, getpid());
+    } else {
+        log_print(KOLOR_PAS, tag, "Opiekun + dziecko PAS %d opuszczaja dworzec. PID=%d", 
+                  id_dziecka, getpid());
+    }
+
+    // ZAKOŃCZ WĄTEK DZIECKA (tylko jeśli został utworzony)
+    if (watek_utworzony) {
+        pthread_mutex_lock(&mutex);
+        zakoncz = 1;
+        pthread_cond_signal(&cond);
+        pthread_mutex_unlock(&mutex);
+        
+        pthread_join(tid_dziecko, NULL);
+    }
+    
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond);
 
     shmdt(shm);
     exit(0);
@@ -337,7 +419,12 @@ void proces_generator(void) {
         snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
         
         pid_t pas = fork(); // utworz proces potomny
+        if (pas == -1) {
+            perror("fork pasazer");
+            continue;  // Spróbuj ponownie w następnej iteracji
+        }
         if (pas == 0) { // proces dziecka
+
             if (los <= 15) { // 15% - dziecko
                 execl("./bin/pasazer", "pasazer", "dziecko", arg_id, NULL);
             } else if (los <= 55 && dzieci_czekajacych > 0 && pierwszy_wolny_idx >= 0) { // 40% - rodzic

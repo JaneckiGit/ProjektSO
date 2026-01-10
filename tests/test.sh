@@ -20,7 +20,7 @@ test1() {
 test2() {
     echo "=== TEST 2: Czy rowerzyści są odmawiani gdy R=2? ==="
     cleanup
-    timeout 30s $BIN 3 10 1 4000 1
+    timeout 30s $BIN 3 10 1 5000 1
     
     if grep -q "brak miejsc rowerowych" raport.txt; then
         echo "[PASS] Rowerzyści odmawiani gdy brak miejsc"
