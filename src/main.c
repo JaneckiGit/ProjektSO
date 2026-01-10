@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     int P = 10;    // Pojemnosc
     int R = 3;     // Rowery
     int T = 5000;  // Postoj [ms]
-    int K = DEFAULT_K; // Liczba kas
+    int K = 1; // Liczba kas
 
 
     // Parsowanie argumentow

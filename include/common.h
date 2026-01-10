@@ -27,7 +27,6 @@
 #define MAX_REGISTERED      1000 // Maksymalna liczba zarejestrowanych pasażerów
 #define MAX_CZEKAJACE_DZIECI 100 // Maksymalna liczba dzieci czekających na opiekunów
 #define MAX_KASY            10 // Maksymalna liczba kas biletowych
-#define DEFAULT_K           1 // Domyślna liczba kas biletowych
 
 // Kolory ANSI do logow
 #define KOLOR_RESET   "\033[0m" // Reset

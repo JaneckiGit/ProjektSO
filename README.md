@@ -72,25 +72,6 @@ kill -SIGUSR1 <PID>
 # Zamknij dworzec (pasażerowie w trasie dojadą do celu)
 kill -SIGUSR2 <PID>
 '''
-
-## Hierarchia procesów
-'''
-autobus_main (dyspozytor) ─── PID główny
-    │
-    ├── kasa ─────────────── proces wielowątkowy
-    │   ├── wątek KASA 1
-    │   ├── wątek KASA 2
-    │   └── ... (K wątków)
-    │
-    ├── autobus (BUS 1) ──── osobny proces
-    ├── autobus (BUS 2)
-    └── ... (N autobusów)
-    │
-    └── pasazer (generator) ─ tworzy pasażerów dynamicznie
-        ├── pasazer (PAS 0) ─ normal/dziecko/rodzic
-        ├── pasazer (PAS 1)
-        └── ... (tworzeni co 800-2000ms)
-'''
 ## Użyte funkcje systemowe
 '''
 # Procesy

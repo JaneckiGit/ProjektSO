@@ -8,7 +8,8 @@
 
 
 // PID-y procesow potomnych
-static pid_t pid_kasa = -1; //PID kasy biletowej
+static pid_t pids_kasy[MAX_KASY];  // PID-y kas biletowych
+static int ile_kas = 0;            // Liczba kas
 static pid_t pids_busy[MAX_BUSES];//PID-y autobusow
 static int ile_busow = 0; //Liczba autobusow
 static pid_t pid_generator = -1; //PID generatora pasazerow
@@ -61,10 +62,11 @@ static void shutdown_children(void) {
         kill(pid_generator, SIGTERM);
     }
 
-    //Kasa 
-    if (pid_kasa > 0) {
-        kill(pid_kasa, SIGTERM);
-
+    //Kasy
+    for (int i = 0; i < ile_kas; i++) {
+        if (pids_kasy[i] > 0) {
+            kill(pids_kasy[i], SIGTERM);
+        }
     }
 
     //Autobusy 
@@ -180,16 +182,19 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     log_print(KOLOR_DYSP, "DYSP", ">>> Sygnały: kill -SIGUSR1 %d | kill -SIGUSR2 %d <<<", 
               getpid(), getpid());
 
-    // URUCHOMIENIE KASY (WYMAGANIE 5.2.b: fork())
-    pid_kasa = fork();
-    if (pid_kasa == -1) { perror("fork kasa"); cleanup_ipc(); exit(1); }
-    if (pid_kasa == 0) {
-        char arg_k[16];
-        snprintf(arg_k, sizeof(arg_k), "%d", K);
-        execl("./bin/kasa", "kasa", arg_k, NULL);
-        perror("execl kasa"); exit(1);
+    // URUCHOMIENIE K KAS (jako osobne procesy)
+    ile_kas = K;
+    for (int i = 0; i < K; i++) {
+        pids_kasy[i] = fork();
+        if (pids_kasy[i] == -1) { perror("fork kasa"); continue; }
+        if (pids_kasy[i] == 0) {
+            char arg_numer[16];
+            snprintf(arg_numer, sizeof(arg_numer), "%d", i + 1);
+            execl("./bin/kasa", "kasa", arg_numer, NULL);
+            perror("execl kasa"); exit(1);
+        }
+        log_print(KOLOR_KASA, "KASA", "KASA %d uruchomiona. PID=%d", i + 1, pids_kasy[i]);
     }
-    log_print(KOLOR_KASA, "KASA", "Uruchomiono (K=%d watkow). PID=%d", K, pid_kasa);
 
     // URUCHOMIENIE AUTOBUSOW
     ile_busow = N;
