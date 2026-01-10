@@ -122,6 +122,13 @@ typedef struct {
     int sukces;              // 1 = bilet kupiony
 } KasaResponse;
 
+// Wiadomość - odpowiedź autobusu do pasażera (czy wsiadł czy odmowa)
+typedef struct {
+    long mtype;              // = PID pasażera (do odbioru odpowiedzi)
+    int przyjety;            // 1 = wsiadł, 0 = odmowa (brak miejsc)
+} OdpowiedzMsg;
+
+// Dane dla wątku dziecka
 // Dane dla wątku dziecka (używane w pasazer.c)
 // Struktura przekazywana do pthread_create() gdy rodzic tworzy wątek dziecka
 typedef struct {
@@ -137,6 +144,7 @@ extern int sem_id; // id semaforów
 extern int shm_id; // id pamięci dzielonej
 extern int msg_id; // id kolejki wiadomości dla autobusów
 extern int msg_kasa_id; // id kolejki wiadomości dla kas
+extern int msg_odp_id; // id kolejk odpowiedzi autobus -> pasażer
 
 // Funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);// Logi z kolorami i tagami

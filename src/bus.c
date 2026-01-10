@@ -219,6 +219,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                                   shm->rowery_zajete, rowery);
                     }
 
+                    // Wyślij potwierdzenie do pasażera - WSIADŁ
+                    OdpowiedzMsg odp;
+                    odp.mtype = bilet.pid_pasazera;
+                    odp.przyjety = 1;
+                    msgsnd(msg_odp_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
+
                     // Autobus pelny (obie pule)
                     if (shm->miejsca_zajete >= pojemnosc && shm->rowery_zajete >= rowery) {
                         log_print(KOLOR_BUS, tag, "PELNY - odjazd! PID=%d", getpid());
@@ -228,6 +234,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     semop(sem_id, &shm_unlock, 1);
                     log_print(KOLOR_BUS, tag, "Odmowa PAS %d (PID=%d): %s",
                               bilet.id_pasazera, bilet.pid_pasazera, powod);
+
+                    // Wyślij odmowę do pasażera - NIE WSIADŁ
+                    OdpowiedzMsg odp;
+                    odp.mtype = bilet.pid_pasazera;
+                    odp.przyjety = 0;
+                    msgsnd(msg_odp_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                 }
             }
 

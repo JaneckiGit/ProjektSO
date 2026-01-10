@@ -138,12 +138,12 @@ kill -SIGUSR2 <PID>
 
 | Parametr | Wartość | Opis | Link |
 |----------|---------|------|------|
-| Wiek dorosłego | losuj(9, 80) | Zakres wieku normal | [src/pasazer.c#L152](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L152) |
-| Szansa na VIP | 1% | Prawdop. VIP | [src/pasazer.c#L153](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L153) |
-| Szansa na rower | 25% | Prawdop. rowerzysty | [src/pasazer.c#L154](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L154) |
-| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L196](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L196) |
-| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L265](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L265) |
-| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L353](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L353) |
+| Wiek dorosłego | losuj(9, 80) | Zakres wieku normal | [src/pasazer.c#L175](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L175) |
+| Szansa na VIP | 1% | Prawdop. VIP | [src/pasazer.c#L176](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L176) |
+| Szansa na rower | 25% | Prawdop. rowerzysty | [src/pasazer.c#L177](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L219) |
+| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L219](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L196) |
+| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L294](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L294) |
+| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L440](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L440) |
 
 # Parametry kasy
 
@@ -151,10 +151,10 @@ kill -SIGUSR2 <PID>
 |----------|---------|------|------|
 | Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | [src/kasa.c#L52](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L52) |
 
-#Prawdopodobieństwa typów pasażerów
+# Prawdopodobieństwa typów pasażerów
 
 | Typ | Warunek | Prawdopodobieństwo | Link |
 |-----|---------|-------------------|------|
-| Dziecko | `los <= 15` | 15% | [src/pasazer.c#L341](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L341) |
-| Rodzic | `los <= 55 && dzieci > 0` | 40% | [src/pasazer.c#L343](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L343) |
-| Normal | reszta | ~45% | [src/pasazer.c#L346](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L346) |
+| Dziecko | `los <= 15` | 15% | [src/pasazer.c#L428](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L428) |
+| Rodzic | `los <= 55 && dzieci > 0` | 40% | [src/pasazer.c#L430](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L430) |
+| Normal | reszta | ~45% | [src/pasazer.c#L433](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L433) |
