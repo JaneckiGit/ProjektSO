@@ -89,6 +89,9 @@ typedef struct {
     // Dzieci czekające na rodziców
     CzekajaceDziecko dzieci[MAX_CZEKAJACE_DZIECI];
     int dzieci_count;
+    // Pasażerowie którzy już wsiedli (ochrona przed podwójnym wsiadaniem)
+    pid_t wsiadli[MAX_REGISTERED];
+    int wsiadli_count;
 } SharedData;
 
 // Wiadomość - bilet

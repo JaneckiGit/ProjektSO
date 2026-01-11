@@ -67,8 +67,12 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
     // Flaga: czy czekamy na odpowiedź od autobusu (zapobiega podwójnemu wysłaniu)
     int czekam_na_odpowiedz = 0;
     pid_t bus_do_ktorego_wyslalem = 0;
-
+    // Flaga: czy już wsiadłem (zapobiega podwójnemu wsiadaniu przy zmianie autobusu)
+    int juz_wsiadlem = 0;
     while (shm->symulacja_aktywna) {
+        if (juz_wsiadlem) {
+            return 0;
+        }
         // SIGUSR2 - dworzec zamkniety
         if (!shm->stacja_otwarta) {
             log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam. PID=%d", getpid());
@@ -133,6 +137,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                     
                     if (odp.przyjety == 1) {
                         // Wsiadł do autobusu!
+                        juz_wsiadlem = 1;
                         semop(sem_id, &shm_lock, 1);
                         shm->pasazerow_czeka -= ile_osob;
                         semop(sem_id, &shm_unlock, 1);

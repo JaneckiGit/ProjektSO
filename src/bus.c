@@ -170,6 +170,22 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 bool akceptuj = true;
                 char powod[64] = "";
 
+                // Sprawdź czy pasażer już wsiadł do innego autobusu
+                semop(sem_id, &shm_lock, 1);
+                for (int i = 0; i < shm->wsiadli_count; i++) {
+                    if (shm->wsiadli[i] == bilet.pid_pasazera) {
+                        akceptuj = false;
+                        break;
+                    }
+                }
+                semop(sem_id, &shm_unlock, 1);
+                
+                if (!akceptuj) {
+                    log_print(KOLOR_BUS, tag, "Odmowa PAS %d (PID=%d): %s",
+                              bilet.id_pasazera, bilet.pid_pasazera, powod);
+                    continue;  // Nie wysyłaj odpowiedzi - pasażer już wsiadł
+                }
+
                 semop(sem_id, &shm_lock, 1);
 
                 int ile_osob = (bilet.wiek_dziecka > 0) ? 2 : 1;
@@ -197,6 +213,11 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         shm->miejsca_zajete += ile_osob;
                     }
                     pasazerow_w_kursie += ile_osob;
+                    
+                    // Oznacz pasażera jako ktory juz wsiadl 
+                    if (shm->wsiadli_count < MAX_REGISTERED) {
+                        shm->wsiadli[shm->wsiadli_count++] = bilet.pid_pasazera;
+                    }
 
                     semop(sem_id, &shm_unlock, 1);
 
