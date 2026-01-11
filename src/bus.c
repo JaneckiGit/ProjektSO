@@ -172,8 +172,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
                 // Sprawdź czy pasażer już wsiadł do innego autobusu
                 semop(sem_id, &shm_lock, 1);
-                for (int i = 0; i < shm->wsiadli_count; i++) {
-                    if (shm->wsiadli[i] == bilet.pid_pasazera) {
+                for (int i = 0; i < shm->wsiedli_count; i++) {
+                    if (shm->wsiedli[i] == bilet.pid_pasazera) {
                         akceptuj = false;
                         break;
                     }
@@ -215,8 +215,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     pasazerow_w_kursie += ile_osob;
                     
                     // Oznacz pasażera jako ktory juz wsiadl 
-                    if (shm->wsiadli_count < MAX_REGISTERED) {
-                        shm->wsiadli[shm->wsiadli_count++] = bilet.pid_pasazera;
+                    if (shm->wsiedli_count < MAX_REGISTERED) {
+                        shm->wsiedli[shm->wsiedli_count++] = bilet.pid_pasazera;
                     }
 
                     semop(sem_id, &shm_unlock, 1);
