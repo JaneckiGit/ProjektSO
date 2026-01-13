@@ -1,21 +1,23 @@
-//pasazer.c - obsluga pasazerow w symulacji
-//typy: normal (dorosly 9-80 lat), rodzic_z_dzieckiem (rodzic + dziecko jako watki)
-//generator tworzy nowych pasazerow co 800-2000ms
-//VIP (1% szans) omija kolejki, rower zajmuje miejsce rowerowe
+//Modul pasazera
+//"generator" tworzy nowych pasażerów co 800-2000ms
+//"normal" dorosły 9-80 lat, kupuje 1 bilet
+//"rodzic_z_dzieckiem" rodzic 18-80 + dziecko 1-7 jako 2 wątki w jednym procesie
+//VIP (1% szans): omija kolejkę do kasy i ma priorytet w autobusie
+//ROWER zajmuje miejsce w puli rowerowej autobusu
 #include "common.h"
 #include "pasazer.h"
 
-//funkcja watku dziecka - czeka na sygnal zakonczenia od rodzica
+// Wątek dziecka - towarzyszy rodzicowi, czeka na sygnał zakończenia
 static void* watek_dziecko(void* arg) {
     DzieckoWatekData *d = (DzieckoWatekData *)arg;
     
-    char tag[16];
+    char tag[16];//tag do logow
     snprintf(tag, sizeof(tag), "PAS %d", d->id_dziecka);
     
     log_print(KOLOR_PAS, tag, "[WATEK] Dziecko (wiek=%d) towarzyszy rodzicowi. TID=%lu", 
               d->wiek_dziecka, (unsigned long)pthread_self());
     
-    //oczekiwanie na sygnal zakonczenia
+    // Czekaj na sygnał zakończenia od rodzica
     pthread_mutex_lock(d->mutex);
     while (!(*d->zakoncz)) {
         pthread_cond_wait(d->cond, d->mutex);
@@ -27,9 +29,7 @@ static void* watek_dziecko(void* arg) {
     
     return NULL;
 }
-
-//wysyla bilet do autobusu przez kolejke komunikatow
-//VIP ma mtype=PID autobusu, zwykly ma mtype=PID+1000000 (nizszy priorytet)
+//pasazer wysyla bilet do autobusu przez kolejke komunikatow 
 static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, int czy_vip,
                         int ma_bilet, pid_t pid_dziecka, int id_dziecka, int wiek_dziecka) {
     BiletMsg bilet;
@@ -42,7 +42,6 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
     bilet.czy_rower = czy_rower;
     bilet.czy_vip = czy_vip;
     bilet.ma_bilet = ma_bilet;
-    bilet.pid_dziecka = pid_dziecka;
     bilet.id_dziecka = id_dziecka;
     bilet.wiek_dziecka = wiek_dziecka;
 
@@ -50,28 +49,27 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
 }
 
 //glowna petla oczekiwania na autobus i wsiadania
-//obsluguje flagi: bus_ktory_odmowil, czekam_na_odpowiedz, juz_wsiadlem
 static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int wiek, 
                               int czy_rower, int czy_vip, int ma_bilet,
                               pid_t pid_dziecka, int id_dziecka, int wiek_dziecka,
                               int ile_osob) {
 
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
-    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
+    struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};  
     int sem_drzwi = czy_rower ? SEM_DOOR_ROWER : SEM_DOOR_NORMAL;
     
-    //flagi stanu pasazera
+    //PID autobusu ktory odmowil wsiadania pasazerowi czeka na nastepny
     pid_t bus_ktory_odmowil = 0;
+    //Flaga czy czekamy na odpowiedz od autobusu (zapobiega podwójnemu wysłaniu)
     int czekam_na_odpowiedz = 0;
     pid_t bus_do_ktorego_wyslalem = 0;
+    //Flaga czy już wsiadłem (zapobiega podwójnemu wsiadaniu przy zmianie autobusu)
     int juz_wsiadlem = 0;
-
     while (shm->symulacja_aktywna) {
         if (juz_wsiadlem) {
             return 0;
         }
-
-        //obsluga zamkniecia dworca
+        //SIGUSR2 dworzec zamkniety
         if (!shm->stacja_otwarta) {
             log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam. PID=%d", getpid());
             semop(sem_id, &shm_lock, 1);
@@ -79,38 +77,31 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             semop(sem_id, &shm_unlock, 1);
             return -1;
         }
-
         if (shm->bus_na_peronie && shm->aktualny_bus_pid > 0) {
             pid_t aktualny_bus = shm->aktualny_bus_pid;
             
-            //ten autobus juz odmowil - czekaj na inny
+            //Jesli to ten sam autobus który odmowil pasazerowi to czekaj na następny
             if (aktualny_bus == bus_ktory_odmowil) {
-                usleep(200000);
+                usleep(200000);  
                 continue;
             }
-            
-            //autobus sie zmienil - reset stanu
+            //Jesli czekamy na odpowiedz ale autobus się zmienił to resetuj flagi
             if (czekam_na_odpowiedz && aktualny_bus != bus_do_ktorego_wyslalem) {
                 czekam_na_odpowiedz = 0;
                 bus_do_ktorego_wyslalem = 0;
             }
-            
-            //wysylanie biletu jesli jeszcze nie wyslano
+            //Wysylaj bilet TYLKO jeśli nie czekamy już na odpowiedz
             if (!czekam_na_odpowiedz) {
                 int bilet_wyslany = 0;
-
                 if (czy_vip) {
-                    //VIP nie czeka w kolejce do drzwi
                     log_print(KOLOR_PAS, tag, "VIP omija kolejke do autobusu! PID=%d", getpid());
                     if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
                                      pid_dziecka, id_dziecka, wiek_dziecka) == 0) {
                         bilet_wyslany = 1;
                     }
                 } else {
-                    //zwykly pasazer - musi zaczekac na semafor drzwi
                     struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT | SEM_UNDO};
                     struct sembuf wyjdz = {sem_drzwi, 1, SEM_UNDO};
-
                     if (semop(sem_id, &wejdz, 1) == 0) {
                         if (shm->aktualny_bus_pid > 0) {
                             if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
@@ -121,14 +112,12 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                         semop(sem_id, &wyjdz, 1);
                     }
                 }
-
                 if (bilet_wyslany) {
                     czekam_na_odpowiedz = 1;
                     bus_do_ktorego_wyslalem = aktualny_bus;
                 }
             }
-
-            //sprawdzanie odpowiedzi od autobusu
+            // Jeśli czekamy na odpowiedź - sprawdź czy przyszła
             if (czekam_na_odpowiedz) {
                 OdpowiedzMsg odp;
                 if (msgrcv(msg_odp_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
@@ -137,49 +126,44 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                     bus_do_ktorego_wyslalem = 0;
                     
                     if (odp.przyjety == 1) {
-                        //udalo sie wsiasc
+                        // Wsiadł do autobusu!
                         juz_wsiadlem = 1;
                         semop(sem_id, &shm_lock, 1);
                         shm->pasazerow_czeka -= ile_osob;
                         semop(sem_id, &shm_unlock, 1);
                         return 0;
                     } else {
-                        //odmowa - zapamietaj i czekaj na nastepny
+                        // Odmowa - zapamiętaj tego busa i czekaj na następny
                         bus_ktory_odmowil = aktualny_bus;
                         log_print(KOLOR_PAS, tag, "Brak miejsc - czekam na nastepny autobus. PID=%d", getpid());
                     }
                 }
             }
-            
-            usleep(100000);
+            usleep(100000);  // 100ms między próbami
             
             if (!shm->symulacja_aktywna || !shm->stacja_otwarta) {
                 break;
             }
         } else {
-            //brak autobusu na peronie - reset flag
+            // Autobus odjechał - reset flag
             bus_ktory_odmowil = 0;
             czekam_na_odpowiedz = 0;
             bus_do_ktorego_wyslalem = 0;
             usleep(200000);
         }
     }
-
-    //koniec symulacji - zmniejsz licznik czekajacych
     semop(sem_id, &shm_lock, 1);
     shm->pasazerow_czeka -= ile_osob;
     semop(sem_id, &shm_unlock, 1);
     return -1;
 }
-
-//kupowanie biletu w kasie lub rejestracja VIP
 static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int czy_vip, int ile_biletow) {
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     
     if (!czy_vip) {
-        //zwykly pasazer - kolejka do losowej kasy
-        int numer_kasy = losuj(1, shm->param_K);
+        int K = shm->param_K;
+        int numer_kasy = losuj(1, K);
         
         log_print(KOLOR_PAS, tag, "Kolejka do KASA %d. PID=%d", numer_kasy, getpid());
         
@@ -194,17 +178,14 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
             perror("pasazer msgsnd kasa");
             return 0;
         }
-        
         KasaResponse resp;
         if (msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), 0) == -1) {
             perror("pasazer msgrcv kasa");
             return 0;
         }
-        
         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
                   ile_biletow, resp.numer_kasy, getpid());
     } else {
-        //VIP omija kase - rejestracja bezposrednia
         log_print(KOLOR_PAS, tag, "VIP - omija kolejke do kasy! PID=%d", getpid());
         semop(sem_id, &shm_lock, 1);
         if (shm->registered_count < MAX_REGISTERED) {
@@ -217,8 +198,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
     }
     return 1;
 }
-
-//proces zwyklego pasazera (dorosly 9-80 lat, bez dziecka)
+// Zwykly dorosly pasazer (bez dziecka)
 void proces_pasazer(int id_pas) {
     srand(time(NULL) ^ getpid());
 
@@ -228,19 +208,15 @@ void proces_pasazer(int id_pas) {
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
     if (shm == (void *)-1) { perror("pasazer shmat"); exit(1); }
 
-    //sprawdzenie czy dworzec otwarty
     if (!shm->stacja_otwarta) {
         log_print(KOLOR_PAS, tag, "Dworzec zamkniety - nie wchodze. PID=%d", getpid());
         shmdt(shm);
         exit(0);
     }
-
-    //losowanie parametrow pasazera
     int wiek = losuj(9, 80);
     int czy_vip = (losuj(1, 100) == 1);
     int czy_rower = (losuj(1, 100) <= 25);
 
-    //rejestracja w statystykach
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     semop(sem_id, &shm_lock, 1);
@@ -249,7 +225,6 @@ void proces_pasazer(int id_pas) {
     if (czy_vip) shm->vip_count++;
     semop(sem_id, &shm_unlock, 1);
 
-    //log wejscia na dworzec
     if (czy_rower) {
         log_print(KOLOR_PAS, tag, "Wszedl na dworzec (wiek=%d, rower)%s. PID=%d", 
                   wiek, czy_vip ? " VIP" : "", getpid());
@@ -257,18 +232,22 @@ void proces_pasazer(int id_pas) {
         log_print(KOLOR_PAS, tag, "Wszedl na dworzec (wiek=%d)%s. PID=%d", 
                   wiek, czy_vip ? " VIP" : "", getpid());
     }
-
-    //kupno biletu i oczekiwanie na autobus
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 1);
+
     czekaj_na_autobus(shm, tag, id_pas, wiek, czy_rower, czy_vip, ma_bilet, 0, 0, 0, 1);
 
     shmdt(shm);
     exit(0);
 }
-
-//proces rodzica z dzieckiem - jeden proces, dwa watki
-//watek glowny (rodzic) kupuje bilety i komunikuje sie z autobusem
-//watek dziecka tylko towarzyszy i czeka na sygnal zakonczenia
+// Rodzic z dzieckiem - jeden proces, dwa wątki
+// Wątek główny (rodzic 18-80 lat) - kupuje 2 bilety, komunikuje się z autobusem
+// Wątek dziecka (1-7 lat) - towarzyszy rodzicowi, czeka na sygnał zakończenia
+// Mechanizmy pthread:
+// - pthread_create() - tworzy wątek reprezentujący dziecko
+// - pthread_mutex_lock/unlock() - synchronizacja dostępu do flagi zakończenia
+// - pthread_cond_wait() - wątek dziecka czeka na sygnał
+// - pthread_cond_signal() - rodzic budzi wątek dziecka
+// - pthread_join() - rodzic czeka na zakończenie wątku
 void proces_rodzic_z_dzieckiem(int id_pas) {
     srand(time(NULL) ^ getpid());
 
@@ -283,16 +262,18 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
         shmdt(shm);
         exit(0);
     }
-
-    //dane rodzica i dziecka
+    // Dane rodzica (18-80 lat)
     int wiek = losuj(18, 80);
     int czy_vip = (losuj(1, 100) == 1);
+    
+    // Dane dziecka (1-7 lat) - generowane w tym samym procesie
     int id_dziecka = id_pas;
     int wiek_dziecka = losuj(1, 7);
 
-    //rejestracja obu osob w statystykach
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
+    
+    // Rejestracja: rodzic + dziecko = 2 osoby
     semop(sem_id, &shm_lock, 1);
     shm->total_pasazerow += 2;
     shm->pasazerow_czeka += 2;
@@ -302,7 +283,7 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
     log_print(KOLOR_PAS, tag, "Opiekun (wiek=%d)%s + dziecko PAS %d (%d lat) - wchodza na dworzec. PID=%d",
               wiek, czy_vip ? " VIP" : "", id_dziecka, wiek_dziecka, getpid());
 
-    //tworzenie watku dziecka
+    //TWORZENIE WĄTKU DZIECKA
     pthread_t tid_dziecko = 0;
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -316,7 +297,6 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
         .cond = &cond,
         .zakoncz = &zakoncz
     };
-    
     if (pthread_create(&tid_dziecko, NULL, watek_dziecko, &dane_dziecka) != 0) {
         perror("pthread_create dziecko");
         log_print(KOLOR_PAS, tag, "BLAD: Nie udalo sie utworzyc watku dziecka. PID=%d", getpid());
@@ -325,18 +305,19 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
                   id_dziecka, (unsigned long)tid_dziecko, getpid());
         watek_utworzony = 1;
     }
-
-    //kupno 2 biletow i oczekiwanie na autobus
+    // Kupno 2 biletow (rodzic + dziecko)
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 2);
+
+    // Czekanie na autobus (rodzic reprezentuje obie osoby)
     int wynik = czekaj_na_autobus(shm, tag, id_pas, wiek, 0, czy_vip, ma_bilet, 
                                    0, id_dziecka, wiek_dziecka, 2);
 
+    // Informacja tylko gdy NIE wsiedli
     if (wynik != 0) {
         log_print(KOLOR_PAS, tag, "Opiekun + dziecko PAS %d opuszczaja dworzec. PID=%d", 
                   id_dziecka, getpid());
     }
-
-    //zakonczenie watku dziecka
+    // Zakończ wątek dziecka
     if (watek_utworzony) {
         pthread_mutex_lock(&mutex);
         zakoncz = 1;
@@ -344,82 +325,75 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
         pthread_mutex_unlock(&mutex);
         pthread_join(tid_dziecko, NULL);
     }
-    
     pthread_mutex_destroy(&mutex);
     pthread_cond_destroy(&cond);
 
     shmdt(shm);
     exit(0);
 }
-
-//generator pasazerow - tworzy nowych co 800-2000ms
+// Generator pasazerow - tworzy nowych pasazerow co 800-2000ms
 void proces_generator(void) {
-    signal(SIGCHLD, SIG_IGN);
-    srand(time(NULL) ^ getpid());
-    int id_pas = 0;
+    signal(SIGCHLD, SIG_IGN); // automatyczne zbieranie zombie przez kernel
+    srand(time(NULL) ^ getpid()); //inicjalizacja losowania
+    int id_pas = 0; //licznik pasazerow
 
     while (1) {
-        SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
+        SharedData *s = (SharedData *)shmat(shm_id, NULL, 0); //polaczenie z pamiecia dzielona
         if (s == (void *)-1) exit(1);
 
-        bool aktywna = s->symulacja_aktywna;
-        bool otwarta = s->stacja_otwarta;
-        shmdt(s);
+        bool aktywna = s->symulacja_aktywna; //czy symulacja trwa
+        bool otwarta = s->stacja_otwarta; //czy dworzec otwarty
+        shmdt(s); //odlacz pamiec
 
-        if (!aktywna) break;
-        if (!otwarta) {
+        if (!aktywna) break; //koniec symulacji
+        if (!otwarta) { //dworzec zamkniety
             msleep(500);
             continue;
         }
-
-        //losowanie typu pasazera i tworzenie procesu
-        int los = losuj(1, 100);
+        int los = losuj(1, 100); //losuj typ pasazera
         char arg_id[16];
-        snprintf(arg_id, sizeof(arg_id), "%d", id_pas);
+        snprintf(arg_id, sizeof(arg_id), "%d", id_pas);//id pasazera jako argument
         
-        pid_t pas = fork();
+        pid_t pas = fork(); //utworz proces potomny
         if (pas == -1) {
             perror("fork pasazer");
-            continue;
+            continue;  //Sprobuj ponownie w następnej iteracji
         }
-        if (pas == 0) {
-            if (los <= 20) {
+        if (pas == 0) { // proces dziecka
+            if (los <= 20) { // 20% rodzic z dzieckiem
                 execl("./bin/pasazer", "pasazer", "rodzic_z_dzieckiem", arg_id, NULL);
-            } else {
+            } else { // 80% zwykly pasazer
                 execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);
             }
             exit(1);
         }
-        id_pas++;
+        id_pas++; //zwieksz licznik
 
-        msleep(losuj(800, 2000));
+        msleep(losuj(800, 2000)); //czekaj 800-2000ms przed nastepnym
     }
     exit(0);
 }
-
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Uzycie: %s <typ> <id>\n", argv[0]);
         fprintf(stderr, "  typ: normal, rodzic_z_dzieckiem, generator\n");
         exit(1);
     }
+    if (init_ipc_client() == -1) exit(1); //polacz z IPC
     
-    if (init_ipc_client() == -1) exit(1);
+    const char* typ = argv[1]; //pierwszy argument = typ
     
-    const char* typ = argv[1];
-    
-    if (strcmp(typ, "generator") == 0) {
+    if (strcmp(typ, "generator") == 0) { //tryb generatora
         proces_generator();
-    } else if (strcmp(typ, "normal") == 0) {
+    } else if (strcmp(typ, "normal") == 0) { //zwykly pasazer
         if (argc < 3) { fprintf(stderr, "Brak id\n"); exit(1); }
         proces_pasazer(atoi(argv[2]));
-    } else if (strcmp(typ, "rodzic_z_dzieckiem") == 0) {
+    } else if (strcmp(typ, "rodzic_z_dzieckiem") == 0) { //rodzic z dzieckiem (2 watki)
         if (argc < 3) { fprintf(stderr, "Brak id\n"); exit(1); }
         proces_rodzic_z_dzieckiem(atoi(argv[2]));
     } else {
         fprintf(stderr, "Nieznany typ: %s\n", typ);
         exit(1);
     }
-    
     return 0;
 }
