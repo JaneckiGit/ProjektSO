@@ -1,4 +1,4 @@
-// bus.h - Definicje funkcji procesu autobusu
+//definicje funkcji procesu autobusu
 #ifndef BUS_H
 #define BUS_H
 

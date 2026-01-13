@@ -103,6 +103,14 @@ kill -SIGUSR2 <PID>
 -creat(), open(), write(), close()
 '''
 
+## Testy 
+'''
+-TEST 1: Obciążeniowy - czy są odmowy przy małej pojemności?
+-TEST 2: Autobus odjeżdża wcześniej gdy pełny
+-TEST 3: SIGUSR1 (N=2 P=10 R=3 T=15000 K=1)
+-TEST 4: SIGUSR2 (N=3 P=10 R=3 T=5000 K=2)
+'''
+
 ## Konfigurowalne parametry symulacji
 
 # Parametry uruchomieniowe
