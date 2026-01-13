@@ -77,58 +77,58 @@ kill -SIGUSR2 <PID>
 ### Procesy
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `fork()` | `src/dyspozytor.c:178,193,215` `src/pasazer.c:338` |
-| `execl()` | `src/dyspozytor.c:181,203,218` `src/pasazer.c:344-346` |
-| `wait()` | `src/dyspozytor.c:81` |
-| `waitpid()` | `src/dyspozytor.c:38,268` |
+| `fork()` | [dyspozytor.c#L189](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L189), [dyspozytor.c#L203](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L203), [dyspozytor.c#L220](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L220), [pasazer.c#L337](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L337) |
+| `execl()` | [dyspozytor.c#L193](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L193), [dyspozytor.c#L214](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L214), [pasazer.c#L344](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L344) |
+| `wait()` | [dyspozytor.c#L80](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L80) |
+| `waitpid()` | [dyspozytor.c#L36](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L36) |
 | `exit()` | wszystkie pliki źródłowe |
 
 ### Wątki
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `pthread_create()` | `src/pasazer.c:271` |
-| `pthread_join()` | `src/pasazer.c:303` |
-| `pthread_mutex_lock/unlock()` | `src/pasazer.c:17,20,301,304` |
-| `pthread_cond_wait/signal()` | `src/pasazer.c:19,302` |
+| `pthread_create()` | [pasazer.c#L271](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L271) |
+| `pthread_join()` | [pasazer.c#L303](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L303) |
+| `pthread_mutex_lock/unlock()` | [pasazer.c#L17](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L17), [pasazer.c#L20](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L20), [pasazer.c#L301](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L301) |
+| `pthread_cond_wait/signal()` | [pasazer.c#L19](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L19), [pasazer.c#L302](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L302) |
 
 ### Sygnały
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `sigaction()` | `src/dyspozytor.c:115-126` `src/bus.c:34-38` `src/kasa.c:28-31` |
-| `kill()` | `src/dyspozytor.c:63-76,236,248` |
-| `sigemptyset()` | `src/dyspozytor.c:114,125` `src/bus.c:37` |
+| `sigaction()` | [dyspozytor.c#L119-L122](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L119-L122), [bus.c#L38-L40](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L38-L40), [kasa.c#L28-L31](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L28-L31) |
+| `kill()` | [dyspozytor.c#L63-L76](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L63-L76) |
+| `sigemptyset()` | [dyspozytor.c#L117](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L117), [bus.c#L37](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L37) |
 
 ### Semafory SysV
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `ftok()` | `src/dyspozytor.c:129-133` `src/utils.c:79-83` |
-| `semget()` | `src/dyspozytor.c:140` `src/utils.c:90` |
-| `semctl()` | `src/dyspozytor.c:44-48,53` |
-| `semop()` | `src/bus.c:109-111,230-232` `src/kasa.c:61,67` `src/pasazer.c:57,58` |
+| `ftok()` | [dyspozytor.c#L133-L137](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L133-L137), [utils.c#L78-L82](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L78-L82) |
+| `semget()` | [dyspozytor.c#L144](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L144), [utils.c#L90](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L90) |
+| `semctl()` | [dyspozytor.c#L44-L48](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L44-L48), [dyspozytor.c#L53](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L53) |
+| `semop()` | [bus.c#L109-L111](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L109-L111), [kasa.c#L61](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L61), [utils.c#L29](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L29) |
 
 ### Pamięć dzielona SysV
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `shmget()` | `src/dyspozytor.c:141` `src/utils.c:91` |
-| `shmat()` | `src/dyspozytor.c:150,233,255,276` `src/bus.c:45` `src/kasa.c:40` |
-| `shmdt()` | `src/dyspozytor.c:167,238,262,287` `src/bus.c:287` `src/kasa.c:87` |
-| `shmctl()` | `src/dyspozytor.c:54` |
+| `shmget()` | [dyspozytor.c#L145](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L145), [utils.c#L91](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L91) |
+| `shmat()` | [dyspozytor.c#L157](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L157), [bus.c#L45](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L45), [kasa.c#L40](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L40) |
+| `shmdt()` | [dyspozytor.c#L175](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L175), [bus.c#L287](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L287), [kasa.c#L87](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L87) |
+| `shmctl()` | [dyspozytor.c#L54](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L54) |
 
 ### Kolejki komunikatów SysV
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `msgget()` | `src/dyspozytor.c:142-144` `src/utils.c:92-94` |
-| `msgsnd()` | `src/bus.c:147,210,224` `src/kasa.c:74` `src/pasazer.c:43` |
-| `msgrcv()` | `src/bus.c:131-134` `src/kasa.c:52` `src/pasazer.c:118,165` |
-| `msgctl()` | `src/dyspozytor.c:55-57` |
+| `msgget()` | [dyspozytor.c#L146-L148](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L146-L148), [utils.c#L92-L94](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L92-L94) |
+| `msgsnd()` | [bus.c#L147](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L147), [kasa.c#L74](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L74), [pasazer.c#L43](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L43) |
+| `msgrcv()` | [bus.c#L131-L134](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L131-L134), [kasa.c#L52](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L52), [pasazer.c#L118](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L118) |
+| `msgctl()` | [dyspozytor.c#L55-L57](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L55-L57) |
 
 ### Pliki
 | Funkcja | Lokalizacja |
 |---------|-------------|
-| `creat()` | `src/dyspozytor.c:169` |
-| `open()` | `src/dyspozytor.c:84` `src/utils.c:55` |
-| `write()` | `src/dyspozytor.c:90-98` `src/utils.c:47,59` |
-| `close()` | `src/dyspozytor.c:100` `src/utils.c:60` |
+| `creat()` | [dyspozytor.c#L177](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L177) |
+| `open()` | [dyspozytor.c#L84](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L84), [utils.c#L55](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L55) |
+| `write()` | [dyspozytor.c#L95](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L95), [utils.c#L47](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L47), [utils.c#L57](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L57) |
+| `close()` | [dyspozytor.c#L100](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L100), [utils.c#L58](https://github.com/JaneckiGit/ProjektSO/blob/main/src/utils.c#L58) |
 
 ## Testy 
 ```
@@ -145,49 +145,49 @@ Uruchomienie: `./tests/test.sh [1|2|3|4|all]`
 
 | Parametr | Domyślna wartość | Opis | Lokalizacja |
 |----------|------------------|------|-------------|
-| `N` | 5 | Liczba autobusów | `src/main.c:9` |
-| `P` | 10 | Pojemność autobusu (miejsca normalne) | `src/main.c:10` |
-| `R` | 3 | Miejsca na rowery | `src/main.c:11` |
-| `T` | 5000 | Czas postoju na peronie [ms] | `src/main.c:12` |
-| `K` | 1 | Liczba kas biletowych | `src/main.c:13` |
+| `N` | 5 | Liczba autobusów | [src/main.c#L9](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L9) |
+| `P` | 10 | Pojemność autobusu (miejsca normalne) | [src/main.c#L10](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L10) |
+| `R` | 3 | Miejsca na rowery | [src/main.c#L11](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L11) |
+| `T` | 5000 | Czas postoju na peronie [ms] | [src/main.c#L12](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L12) |
+| `K` | 1 | Liczba kas biletowych | [src/main.c#L13](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L13) |
 
 ### Stałe konfiguracyjne
 
 | Stała | Wartość | Opis | Lokalizacja |
 |-------|---------|------|-------------|
-| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | `include/common.h:25` |
-| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | `include/common.h:26` |
-| `MAX_REGISTERED` | 100000 | Maks. zarejestrowanych pasażerów | `include/common.h:27` |
-| `MAX_KASY` | 10 | Maksymalna liczba kas | `include/common.h:28` |
+| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | [include/common.h#L25](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L25) |
+| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | [include/common.h#L26](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L26) |
+| `MAX_REGISTERED` | 100000 | Maks. zarejestrowanych pasażerów | [include/common.h#L27](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L27) |
+| `MAX_KASY` | 10 | Maksymalna liczba kas | [include/common.h#L28](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L28) |
 
 ### Parametry autobusu
 
 | Parametr | Wartość | Opis | Lokalizacja |
 |----------|---------|------|-------------|
-| `czas_trasy_Ti` | losuj(15000, 30000) | Czas trasy [ms] | `src/bus.c:29` |
-| `czas_dojazdu` (1. kurs) | losuj(1000, 2000) | Dojazd na pętlę [ms] | `src/bus.c:72` |
-| `czas_dojazdu` (kolejne) | losuj(8000, 15000) | Dojazd na pętlę [ms] | `src/bus.c:72` |
+| `czas_trasy_Ti` | losuj(15000, 30000) | Czas trasy [ms] | [src/bus.c#L29](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L29) |
+| `czas_dojazdu` (1. kurs) | losuj(1000, 2000) | Dojazd na pętlę [ms] | [src/bus.c#L72](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L72) |
+| `czas_dojazdu` (kolejne) | losuj(8000, 15000) | Dojazd na pętlę [ms] | [src/bus.c#L72](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L72) |
 
 ### Parametry pasażerów
 
 | Parametr | Wartość | Opis | Lokalizacja |
 |----------|---------|------|-------------|
-| Wiek dorosłego | losuj(9, 80) | Zakres wieku pasażera | `src/pasazer.c:212` |
-| Szansa na VIP | 1% | Prawdopodobieństwo VIP | `src/pasazer.c:213` |
-| Szansa na rower | 25% | Prawdopodobieństwo rowerzysty | `src/pasazer.c:214` |
-| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | `src/pasazer.c:252` |
-| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | `src/pasazer.c:249` |
-| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | `src/pasazer.c:351` |
+| Wiek dorosłego | losuj(9, 80) | Zakres wieku pasażera | [src/pasazer.c#L212](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L212) |
+| Szansa na VIP | 1% | Prawdopodobieństwo VIP | [src/pasazer.c#L213](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L213) |
+| Szansa na rower | 25% | Prawdopodobieństwo rowerzysty | [src/pasazer.c#L214](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L214) |
+| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L252](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L252) |
+| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L249](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L249) |
+| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L351](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L351) |
 
 ### Parametry kasy
 
 | Parametr | Wartość | Opis | Lokalizacja |
 |----------|---------|------|-------------|
-| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | `src/kasa.c:58` |
+| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | [src/kasa.c#L58](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L58) |
 
 ### Prawdopodobieństwa typów pasażerów
 
 | Typ | Prawdopodobieństwo | Lokalizacja |
 |-----|-------------------|-------------|
-| Rodzic z dzieckiem | 20% | `src/pasazer.c:343` |
-| Zwykły pasażer | 80% | `src/pasazer.c:345` |
+| Rodzic z dzieckiem | 20% | [src/pasazer.c#L343](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L343) |
+| Zwykły pasażer | 80% | [src/pasazer.c#L345](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L345) |
