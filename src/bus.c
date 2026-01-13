@@ -142,6 +142,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         semop(sem_id, &shm_lock, 1);
                         shm->odrzuconych_bez_biletu++;
                         semop(sem_id, &shm_unlock, 1);
+                        //Wyslij odmowe do pasazera
+                        OdpowiedzMsg odp_bez = { .mtype = bilet.pid_pasazera, .przyjety = 0 };
+                        msgsnd(msg_odp_id, &odp_bez, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                         continue;
                     }
                     log_print(KOLOR_BUS, tag, "Kierowca: PAS %d - bilet OK.", bilet.id_pasazera);
@@ -231,7 +234,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 log_print(KOLOR_BUS, tag, ">>> WYMUSZONY ODJAZD (SIGUSR1)! PID=%d <<<", getpid());
             }
         }
-        //zamkniecie drzwi przed odjazdem
+        //zamkniecie drzwi przed odjazdem - semop() czeka az pasazer opusci drzwi
         semop(sem_id, &zablokuj_drzwi_n, 1);
         semop(sem_id, &zablokuj_drzwi_r, 1);
 
@@ -241,6 +244,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->aktualny_bus_id = 0;
         shm->bus_na_peronie = false;
         shm->pasazerow_w_trasie += pasazerow_w_kursie;
+        shm->wsiedli_count = 0; //czyszczenie listy wsiadajacych
         przewiezionych += pasazerow_w_kursie;
         int w_trasie = shm->pasazerow_w_trasie;
         semop(sem_id, &shm_unlock, 1);

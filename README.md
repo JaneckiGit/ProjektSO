@@ -59,7 +59,7 @@ make clean-ipc - czyszczenie zasobow IPC
 ```
 
 ## Przykład użycia sygnałów
-'''
+```bash
 # Uruchom symulację
 ./bin/autobus_main 3 10 3 5000 2 &
 
@@ -71,98 +71,123 @@ kill -SIGUSR1 <PID>
 
 # Zamknij dworzec (pasażerowie w trasie dojadą do celu)
 kill -SIGUSR2 <PID>
-'''
+```
 ## Użyte funkcje systemowe
-'''
-# Procesy
 
--fork(), execl(), wait(), waitpid(), exit()
+### Procesy
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `fork()` | `src/dyspozytor.c:178,193,215` `src/pasazer.c:338` |
+| `execl()` | `src/dyspozytor.c:181,203,218` `src/pasazer.c:344-346` |
+| `wait()` | `src/dyspozytor.c:81` |
+| `waitpid()` | `src/dyspozytor.c:38,268` |
+| `exit()` | wszystkie pliki źródłowe |
 
-# Wątki
+### Wątki
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `pthread_create()` | `src/pasazer.c:271` |
+| `pthread_join()` | `src/pasazer.c:303` |
+| `pthread_mutex_lock/unlock()` | `src/pasazer.c:17,20,301,304` |
+| `pthread_cond_wait/signal()` | `src/pasazer.c:19,302` |
 
--pthread_create(), pthread_join(), pthread_mutex_lock/unlock(), pthread_cond_wait/broadcast()
+### Sygnały
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `sigaction()` | `src/dyspozytor.c:115-126` `src/bus.c:34-38` `src/kasa.c:28-31` |
+| `kill()` | `src/dyspozytor.c:63-76,236,248` |
+| `sigemptyset()` | `src/dyspozytor.c:114,125` `src/bus.c:37` |
 
-# Sygnały
+### Semafory SysV
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `ftok()` | `src/dyspozytor.c:129-133` `src/utils.c:79-83` |
+| `semget()` | `src/dyspozytor.c:140` `src/utils.c:90` |
+| `semctl()` | `src/dyspozytor.c:44-48,53` |
+| `semop()` | `src/bus.c:109-111,230-232` `src/kasa.c:61,67` `src/pasazer.c:57,58` |
 
--sigaction(), kill(), sigemptyset()
+### Pamięć dzielona SysV
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `shmget()` | `src/dyspozytor.c:141` `src/utils.c:91` |
+| `shmat()` | `src/dyspozytor.c:150,233,255,276` `src/bus.c:45` `src/kasa.c:40` |
+| `shmdt()` | `src/dyspozytor.c:167,238,262,287` `src/bus.c:287` `src/kasa.c:87` |
+| `shmctl()` | `src/dyspozytor.c:54` |
 
-# Semafory SysV
+### Kolejki komunikatów SysV
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `msgget()` | `src/dyspozytor.c:142-144` `src/utils.c:92-94` |
+| `msgsnd()` | `src/bus.c:147,210,224` `src/kasa.c:74` `src/pasazer.c:43` |
+| `msgrcv()` | `src/bus.c:131-134` `src/kasa.c:52` `src/pasazer.c:118,165` |
+| `msgctl()` | `src/dyspozytor.c:55-57` |
 
--ftok(), semget(), semctl(), semop()
-
-# Pamięć dzielona SysV
-
--shmget(), shmat(), shmdt(), shmctl()
-
-# Kolejki komunikatów SysV
-
--msgget(), msgsnd(), msgrcv(), msgctl()
-
-# Pliki
-
--creat(), open(), write(), close()
-'''
+### Pliki
+| Funkcja | Lokalizacja |
+|---------|-------------|
+| `creat()` | `src/dyspozytor.c:169` |
+| `open()` | `src/dyspozytor.c:84` `src/utils.c:55` |
+| `write()` | `src/dyspozytor.c:90-98` `src/utils.c:47,59` |
+| `close()` | `src/dyspozytor.c:100` `src/utils.c:60` |
 
 ## Testy 
-'''
--TEST 1: Obciążeniowy - czy są odmowy przy małej pojemności?
--TEST 2: Autobus odjeżdża wcześniej gdy pełny
--TEST 3: SIGUSR1 (N=2 P=10 R=3 T=15000 K=1)
--TEST 4: SIGUSR2 (N=3 P=10 R=3 T=5000 K=2)
-'''
+```
+TEST 1: Obciążeniowy - czy są odmowy przy małej pojemności?
+TEST 2: Czy rowerzyści są odmawiani gdy R=2?
+TEST 3: SIGUSR1 (N=2 P=10 R=3 T=15000 K=1)
+TEST 4: SIGUSR2 (N=3 P=10 R=3 T=5000 K=2)
+```
+Uruchomienie: `./tests/test.sh [1|2|3|4|all]`
 
 ## Konfigurowalne parametry symulacji
 
-# Parametry uruchomieniowe
+### Parametry uruchomieniowe
 
-| Parametr | Domyślna wartość | Opis | Link |
-|----------|------------------|------|------|
-| `N` | 3 | Liczba autobusów | [src/main.c#L9](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L9) |
-| `P` | 10 | Pojemność autobusu (miejsca normalne) | [src/main.c#L10](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L10) |
-| `R` | 3 | Miejsca na rowery | [src/main.c#L11](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L11) |
-| `T` | 5000 | Czas postoju na peronie [ms] | [src/main.c#L12](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L12) |
-| `K` | 1 (DEFAULT_K) | Liczba kas biletowych | [src/main.c#L13](https://github.com/JaneckiGit/ProjektSO/blob/main/src/main.c#L13) |
+| Parametr | Domyślna wartość | Opis | Lokalizacja |
+|----------|------------------|------|-------------|
+| `N` | 5 | Liczba autobusów | `src/main.c:9` |
+| `P` | 10 | Pojemność autobusu (miejsca normalne) | `src/main.c:10` |
+| `R` | 3 | Miejsca na rowery | `src/main.c:11` |
+| `T` | 5000 | Czas postoju na peronie [ms] | `src/main.c:12` |
+| `K` | 1 | Liczba kas biletowych | `src/main.c:13` |
 
-# Stałe konfiguracyjne
+### Stałe konfiguracyjne
 
-| Stała | Wartość | Opis | Link |
-|-------|---------|------|------|
-| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | [include/common.h#L25](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L25) |
-| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | [include/common.h#L26](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L26) |
-| `MAX_REGISTERED` | 1000 | Maks. zarejestrowanych pasażerów | [include/common.h#L27](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L27) |
-| `MAX_CZEKAJACE_DZIECI` | 100 | Maks. dzieci czekających | [include/common.h#L28](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L28) |
-| `MAX_KASY` | 10 | Maksymalna liczba kas | [include/common.h#L29](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L29) |
-| `DEFAULT_K` | 1 | Domyślna liczba kas | [include/common.h#L30](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h#L30) |
+| Stała | Wartość | Opis | Lokalizacja |
+|-------|---------|------|-------------|
+| `MAX_BUSES` | 50 | Maksymalna liczba autobusów | `include/common.h:25` |
+| `MAX_CAPACITY` | 200 | Maksymalna pojemność autobusu | `include/common.h:26` |
+| `MAX_REGISTERED` | 100000 | Maks. zarejestrowanych pasażerów | `include/common.h:27` |
+| `MAX_KASY` | 10 | Maksymalna liczba kas | `include/common.h:28` |
 
-# Parametry autobusu
+### Parametry autobusu
 
-| Parametr | Wartość | Opis | Link |
-|----------|---------|------|------|
-| `czas_trasy_Ti` | losuj(15000, 30000) | Czas trasy [ms] | [src/bus.c#L38](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L38) |
-| `czas_dojazdu` (1. kurs) | losuj(1000, 2000) | Dojazd na pętlę [ms] | [src/bus.c#L81](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L81) |
-| `czas_dojazdu` (kolejne) | losuj(8000, 15000) | Dojazd na pętlę [ms] | [src/bus.c#L83](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L83) |
+| Parametr | Wartość | Opis | Lokalizacja |
+|----------|---------|------|-------------|
+| `czas_trasy_Ti` | losuj(15000, 30000) | Czas trasy [ms] | `src/bus.c:29` |
+| `czas_dojazdu` (1. kurs) | losuj(1000, 2000) | Dojazd na pętlę [ms] | `src/bus.c:72` |
+| `czas_dojazdu` (kolejne) | losuj(8000, 15000) | Dojazd na pętlę [ms] | `src/bus.c:72` |
 
-# Parametry pasażerów
+### Parametry pasażerów
 
-| Parametr | Wartość | Opis | Link |
-|----------|---------|------|------|
-| Wiek dorosłego | losuj(9, 80) | Zakres wieku normal | [src/pasazer.c#L175](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L175) |
-| Szansa na VIP | 1% | Prawdop. VIP | [src/pasazer.c#L176](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L176) |
-| Szansa na rower | 25% | Prawdop. rowerzysty | [src/pasazer.c#L177](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L219) |
-| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | [src/pasazer.c#L219](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L196) |
-| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | [src/pasazer.c#L294](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L294) |
-| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | [src/pasazer.c#L440](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L440) |
+| Parametr | Wartość | Opis | Lokalizacja |
+|----------|---------|------|-------------|
+| Wiek dorosłego | losuj(9, 80) | Zakres wieku pasażera | `src/pasazer.c:212` |
+| Szansa na VIP | 1% | Prawdopodobieństwo VIP | `src/pasazer.c:213` |
+| Szansa na rower | 25% | Prawdopodobieństwo rowerzysty | `src/pasazer.c:214` |
+| Wiek dziecka | losuj(1, 7) | Zakres wieku dziecka | `src/pasazer.c:252` |
+| Wiek rodzica | losuj(18, 80) | Zakres wieku opiekuna | `src/pasazer.c:249` |
+| Interwał generatora | losuj(800, 2000) | Czas między pasażerami [ms] | `src/pasazer.c:351` |
 
-# Parametry kasy
+### Parametry kasy
 
-| Parametr | Wartość | Opis | Link |
-|----------|---------|------|------|
-| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | [src/kasa.c#L52](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L52) |
+| Parametr | Wartość | Opis | Lokalizacja |
+|----------|---------|------|-------------|
+| Czas obsługi | losuj(200, 500) | Czas obsługi pasażera [ms] | `src/kasa.c:58` |
 
-# Prawdopodobieństwa typów pasażerów
+### Prawdopodobieństwa typów pasażerów
 
-| Typ | Warunek | Prawdopodobieństwo | Link |
-|-----|---------|-------------------|------|
-| Dziecko | `los <= 15` | 15% | [src/pasazer.c#L428](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L428) |
-| Rodzic | `los <= 55 && dzieci > 0` | 40% | [src/pasazer.c#L430](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L430) |
-| Normal | reszta | ~45% | [src/pasazer.c#L433](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L433) |
+| Typ | Prawdopodobieństwo | Lokalizacja |
+|-----|-------------------|-------------|
+| Rodzic z dzieckiem | 20% | `src/pasazer.c:343` |
+| Zwykły pasażer | 80% | `src/pasazer.c:345` |

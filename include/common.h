@@ -24,7 +24,7 @@
 //Stale konfiguracyjne (MAX_BUSES, MAX_CAPACITY)
 #define MAX_BUSES           50//Maksymalna liczba autobusow
 #define MAX_CAPACITY        200//Maksymalna pojemnosc autobusu
-#define MAX_REGISTERED      1000//Maksymalna liczba zarejestrowanych pasazerow
+#define MAX_REGISTERED      100000//Maksymalna liczba zarejestrowanych pasazerow
 #define MAX_KASY            10//Maksymalna liczba kas biletowych
 
 //Kolory ANSI do logow

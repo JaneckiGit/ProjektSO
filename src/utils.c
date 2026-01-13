@@ -72,9 +72,8 @@ int losuj(int min, int max) {
 void msleep(int ms) {
     usleep(ms * 1000);
 }
-// Inicjalizacja IPC dla procesow potomnych (bus, kasa, pasazer)
+//Inicjalizacja IPC dla procesow potomnych (bus, kasa, pasazer)
 //laczy się do ISTNIEJĄCYCH zasobów (bez IPC_CREAT
-//Klucze muszą być identyczne jak w dyspozytorze
 //Wywolywane przez: bus, kasa, pasazer
 int init_ipc_client(void) {
     // Generowanie kluczy (identyczne jak w dyspozytorze)
