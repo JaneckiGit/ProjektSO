@@ -1,5 +1,5 @@
 //obsluga autobusu w symulacji
-//autobus jedzie na petle, stoi na peronie, zabiera pasazerow i jedzie w trase
+//autobus jedzie na dworzec, stoi na peronie, zabiera pasazerow i jedzie do miejsca docelowego
 //obsluguje sygnaly SIGUSR1 (wymuszony odjazd) i SIGTERM (koniec pracy)
 #include "bus.h"
 #include "common.h"
@@ -68,9 +68,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
             break;
         }
-        //jazda na petle - pierwszy kurs krotszy
+        //jazda na dworzec - pierwszy kurs krotszy (autobus startuje blizej)
         int czas_dojazdu = (kursow == 0) ? losuj(1000, 2000) : losuj(8000, 15000);
-        log_print(KOLOR_BUS, tag, "Jedzie na petle (%dms). PID=%d", czas_dojazdu, getpid());
+        log_print(KOLOR_BUS, tag, "Wraca na dworzec (%dms). PID=%d", czas_dojazdu, getpid());
         
         //czekanie z mozliwoscia przerwania
         int pozostalo = czas_dojazdu;
@@ -147,7 +147,6 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         msgsnd(msg_odp_id, &odp_bez, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                         continue;
                     }
-                    log_print(KOLOR_BUS, tag, "Kierowca: PAS %d - bilet OK.", bilet.id_pasazera);
                     
                     //sprawdzenie czy pasazer juz nie wsiadl do innego autobusu
                     semop(sem_id, &shm_lock, 1);
@@ -158,8 +157,10 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     }
                     if (juz_wsiadl) {//pasazer juz wsiadl wczesniej
                         semop(sem_id, &shm_unlock, 1);
-                        continue;
+                        continue;  
                     }
+                    log_print(KOLOR_BUS, tag, "Kierowca: PAS %d - bilet OK.", bilet.id_pasazera);
+                    
                     //obliczenie ile miejsc potrzeba
                     int ile_osob = (bilet.wiek_dziecka > 0) ? 2 : 1;
                     bool akceptuj = true;
@@ -235,6 +236,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             }
         }
         //zamkniecie drzwi przed odjazdem - semop() czeka az pasazer opusci drzwi
+        log_print(KOLOR_BUS, tag, "ZAMYKAM DRZWI PRZED ODJAZDEM. PID=%d", getpid());
         semop(sem_id, &zablokuj_drzwi_n, 1);
         semop(sem_id, &zablokuj_drzwi_r, 1);
 
@@ -244,7 +246,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->aktualny_bus_id = 0;
         shm->bus_na_peronie = false;
         shm->pasazerow_w_trasie += pasazerow_w_kursie;
-        shm->wsiedli_count = 0; //czyszczenie listy wsiadajacych
+
         przewiezionych += pasazerow_w_kursie;
         int w_trasie = shm->pasazerow_w_trasie;
         semop(sem_id, &shm_unlock, 1);
@@ -256,8 +258,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         semop(sem_id, &odblokuj_drzwi_n, 1);
         semop(sem_id, &odblokuj_drzwi_r, 1);
         semop(sem_id, &zwolnij_peron, 1);
-        //jazda trasa
-        log_print(KOLOR_BUS, tag, "W trasie (%dms). PID=%d", czas_trasy_Ti, getpid());
+        //jazda do miejsca docelowego
+        log_print(KOLOR_BUS, tag, "Jedzie do miejsca docelowego (%dms). PID=%d", czas_trasy_Ti, getpid());
         
         int pozostalo_trasa = czas_trasy_Ti;
         while (pozostalo_trasa > 0 && bus_running) {
@@ -265,13 +267,13 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             msleep(czekaj);
             pozostalo_trasa -= czekaj;
         }
-        //pasazerowie wysiadaja na koncu trasy
+        //pasazerowie wysiadaja w miejscu docelowym
         semop(sem_id, &shm_lock, 1);
         shm->pasazerow_w_trasie -= pasazerow_w_kursie;
         shm->total_przewiezionych += pasazerow_w_kursie;
         semop(sem_id, &shm_unlock, 1);
 
-        log_print(KOLOR_BUS, tag, "Pasazerowie wysiedli (%d). PID=%d", pasazerow_w_kursie, getpid());
+        log_print(KOLOR_BUS, tag, "Miejsce docelowe - pasazerowie wysiedli (%d). PID=%d", pasazerow_w_kursie, getpid());
         //koniec jesli stacja zamknieta i pusty kurs
         if (pasazerow_w_kursie == 0 && !shm->stacja_otwarta) {
             log_print(KOLOR_BUS, tag, "Stacja zamknieta, pusty kurs - koncze. PID=%d", getpid());

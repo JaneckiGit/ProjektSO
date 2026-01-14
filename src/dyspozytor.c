@@ -231,6 +231,14 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     }
     //GŁÓWNA PETLA DYSPOTYZORA
     while (!flaga_stop) {
+        //periodyczne czyszczenie listy wsiedli (zapobiega przepelnieniu przy dlugich testach)
+        SharedData *shm_check = (SharedData *)shmat(shm_id, NULL, 0);
+        if (shm_check != (void *)-1) {
+            if (shm_check->wsiedli_count > MAX_REGISTERED / 2) {
+                shm_check->wsiedli_count = 0;
+            }
+            shmdt(shm_check);
+        }
         //obsluga SIGUSR1 wymuszony odjazd
         if (flaga_sigusr1) {
             flaga_sigusr1 = 0;
@@ -256,6 +264,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
             if (s != (void *)-1) {
                 s->stacja_otwarta = false;  //nowi pasazerowie nie wchodza na dworzec
+                s->wsiedli_count = 0;       //czyszczenie listy wsiedli (zapobiega przepelnieniu)
                 shmdt(s);
             }
             //zatrzymaj generator
@@ -301,6 +310,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         log_print(KOLOR_STAT, "STAT", "========================================");
         log_print(KOLOR_STAT, "STAT", "Pasazerow: %d", s->total_pasazerow);
         log_print(KOLOR_STAT, "STAT", "Przewiezionych: %d", s->total_przewiezionych);
+        log_print(KOLOR_STAT, "STAT", "Opuscilo dworzec: %d", s->total_pasazerow - s->total_przewiezionych);
         log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
         log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
         for (int i = 0; i < s->param_K; i++) {

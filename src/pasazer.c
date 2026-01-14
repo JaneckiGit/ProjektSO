@@ -14,7 +14,7 @@ static void* watek_dziecko(void* arg) {
     char tag[16];
     snprintf(tag, sizeof(tag), "PAS %d", d->id_dziecka);
     
-    log_print(KOLOR_PAS, tag, "[WATEK] Dziecko (wiek=%d) towarzyszy rodzicowi. TID=%lu", 
+    log_print(KOLOR_PAS, tag, "[WATEK] Dziecko (wiek=%d) z rodzicem TID=%lu", 
               d->wiek_dziecka, (unsigned long)pthread_self());
     pthread_mutex_lock(d->mutex);// Czekaj na sygnał zakończenia od rodzica
 
@@ -23,14 +23,14 @@ static void* watek_dziecko(void* arg) {
     }
     pthread_mutex_unlock(d->mutex);
     
-    log_print(KOLOR_PAS, tag, "[WATEK] Dziecko konczy dzialanie. TID=%lu", 
+    log_print(KOLOR_PAS, tag, "[WATEK] Dziecko konczy dzialanie TID=%lu", 
               (unsigned long)pthread_self());
     
     return NULL;
 }
 //wysylanie biletu do autobusu - VIP ma mtype=PID autobusu, zwykly ma mtype=PID+1000000 (nizszy priorytet)
 static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, int czy_vip,
-                        int ma_bilet, pid_t pid_dziecka, int id_dziecka, int wiek_dziecka) {
+                        int ma_bilet, int id_dziecka, int wiek_dziecka) {
     BiletMsg bilet;
     memset(&bilet, 0, sizeof(bilet));
     
@@ -49,7 +49,7 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
 //glowna petla oczekiwania na autobus - obsluguje flagi: bus_ktory_odmowil, czekam_na_odpowiedz, juz_wsiadlem
 static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int wiek, 
                               int czy_rower, int czy_vip, int ma_bilet,
-                              pid_t pid_dziecka, int id_dziecka, int wiek_dziecka,
+                              int id_dziecka, int wiek_dziecka,
                               int ile_osob) {
 
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
@@ -68,7 +68,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
         }
         //obsluga zamkniecia dworca
         if (!shm->stacja_otwarta) {
-            log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam. PID=%d", getpid());
+            log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam PID=%d", getpid());
             semop(sem_id, &shm_lock, 1);
             shm->pasazerow_czeka -= ile_osob;
             semop(sem_id, &shm_unlock, 1);
@@ -93,7 +93,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 if (czy_vip) {
                     log_print(KOLOR_PAS, tag, "VIP omija kolejke do autobusu! PID=%d", getpid());
                     if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
-                                     pid_dziecka, id_dziecka, wiek_dziecka) == 0) {
+                                     id_dziecka, wiek_dziecka) == 0) {
                         bilet_wyslany = 1;
                     }
                 } else {
@@ -102,7 +102,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                     if (semop(sem_id, &wejdz, 1) == 0) {
                         if (shm->aktualny_bus_pid > 0) {
                             if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
-                                             pid_dziecka, id_dziecka, wiek_dziecka) == 0) {
+                                             id_dziecka, wiek_dziecka) == 0) {
                                 bilet_wyslany = 1;
                             }
                         }
@@ -132,7 +132,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                     } else {
                         //odmowa - zapamietaj i czekaj na nastepny
                         bus_ktory_odmowil = aktualny_bus;
-                        log_print(KOLOR_PAS, tag, "Brak miejsc - czekam na nastepny autobus. PID=%d", getpid());
+                        log_print(KOLOR_PAS, tag, "Brak miejsc - czekam na nastepny autobus PID=%d", getpid());
                     }
                 }
             }
@@ -179,10 +179,13 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
             perror("pasazer msgrcv kasa");
             return 0;
         }
+        if (resp.sukces == 0) {//stacja zamknieta
+            return 0;
+        }
         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
                   ile_biletow, resp.numer_kasy, getpid());
     } else {
-        log_print(KOLOR_PAS, tag, "VIP - omija kolejke do kasy! PID=%d", getpid());
+        log_print(KOLOR_PAS, tag, "VIP - omija kase! PID=%d", getpid());
         semop(sem_id, &shm_lock, 1);
         if (shm->registered_count < MAX_REGISTERED) {
             shm->registered_pids[shm->registered_count] = getpid();
@@ -190,7 +193,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
             shm->registered_count++;
         }
         semop(sem_id, &shm_unlock, 1);
-        log_print(KOLOR_KASA, "KASA", "VIP PAS %d (wiek=%d) - bilet okresowy", id_pas, wiek);
+        log_print(KOLOR_KASA, "KASA", "VIP PAS %d (wiek=%d) - Wczesniej wykupiony bilet", id_pas, wiek);
     }
     return 1;
 }
@@ -205,7 +208,7 @@ void proces_pasazer(int id_pas) {
     if (shm == (void *)-1) { perror("pasazer shmat"); exit(1); }
 
     if (!shm->stacja_otwarta) {
-        log_print(KOLOR_PAS, tag, "Dworzec zamkniety - nie wchodze. PID=%d", getpid());
+        log_print(KOLOR_PAS, tag, "Dworzec zamkniety - nie wchodze PID=%d", getpid());
         shmdt(shm);
         exit(0);
     }
@@ -225,7 +228,7 @@ void proces_pasazer(int id_pas) {
               wiek, czy_rower ? ", rower" : "", czy_vip ? " VIP" : "", getpid());
 
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 1);
-    czekaj_na_autobus(shm, tag, id_pas, wiek, czy_rower, czy_vip, ma_bilet, 0, 0, 0, 1);
+    czekaj_na_autobus(shm, tag, id_pas, wiek, czy_rower, czy_vip, ma_bilet, 0, 0, 1);
 
     shmdt(shm);
     exit(0);
@@ -241,13 +244,13 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
     if (shm == (void *)-1) { perror("rodzic shmat"); exit(1); }
 
     if (!shm->stacja_otwarta) {
-        log_print(KOLOR_PAS, tag, "Dworzec zamkniety - nie wchodze. PID=%d", getpid());
+        log_print(KOLOR_PAS, tag, "Dworzec zamkniety - nie wchodze PID=%d", getpid());
         shmdt(shm);
         exit(0);
     }
     //dane rodzica i dziecka
     int wiek = losuj(18, 80);
-    int czy_vip = (losuj(1, 100) == 1);
+    int czy_vip = 0;  //rodzic nie jest VIPem
     int id_dziecka = id_pas;
     int wiek_dziecka = losuj(1, 7);
 
@@ -290,7 +293,7 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
     //kupno 2 biletow i oczekiwanie na autobus
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 2);
     int wynik = czekaj_na_autobus(shm, tag, id_pas, wiek, 0, czy_vip, ma_bilet, 
-                                   0, id_dziecka, wiek_dziecka, 2);
+                                   id_dziecka, wiek_dziecka, 2);
 
     if (wynik != 0) {
         log_print(KOLOR_PAS, tag, "Opiekun + dziecko PAS %d opuszczaja dworzec. PID=%d", 
