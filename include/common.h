@@ -21,13 +21,13 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-//Stale konfiguracyjne (MAX_BUSES, MAX_CAPACITY)
+//Stałe konfiguracyjne (MAX_BUSES, MAX_CAPACITY)
 #define MAX_BUSES           50//Maksymalna liczba autobusow
 #define MAX_CAPACITY        200//Maksymalna pojemnosc autobusu
 #define MAX_REGISTERED      100000//Maksymalna liczba zarejestrowanych pasazerow
 #define MAX_KASY            10//Maksymalna liczba kas biletowych
 
-//Kolory ANSI do logow
+//Kolory ANSI do logów
 #define KOLOR_RESET   "\033[0m"//Reset
 #define KOLOR_MAIN    "\033[1;37m"//Bialy 
 #define KOLOR_KASA    "\033[1;32m"//Zielony
@@ -36,7 +36,7 @@
 #define KOLOR_PAS     "\033[1;36m"//Cyan
 #define KOLOR_STAT    "\033[1;35m" //Magenta
 
-//Indeksy semaforow
+//Indeksy semaforów
 #define SEM_DOOR_NORMAL  0 //drzwi do autobusu
 #define SEM_DOOR_ROWER   1 //drzwi do autobusu z rowerem
 #define SEM_BUS_STOP     2 //peron - tylko jeden autobus
@@ -45,7 +45,7 @@
 #define SEM_COUNT        5 // liczba semaforow przed kasami
 
 //Pamiec dzielona miedzy wszystkie procesy
-//Dostep chroniony przez SEM_SHM
+//Dostęp chroniony przez SEM_SHM
 typedef struct {
     int param_N;
     int param_P;
@@ -117,7 +117,7 @@ typedef struct {
 
 //Dane dla wątku dziecka
 //dane dla wątku dziecka (używane w pasazer.c)
-// Struktura przekazywana do pthread_create() gdy rodzic tworzy wątek dziecka
+//Struktura przekazywana do pthread_create() gdy rodzic tworzy wątek dziecka
 typedef struct {
     int id_dziecka;              //ID pasazera-dziecka
     int wiek_dziecka;            //Wiek dziecka (1-7 lat)
@@ -127,11 +127,11 @@ typedef struct {
 } DzieckoWatekData;
 
 //zmienne IPC
-extern int sem_id; // id semaforów
-extern int shm_id; // id pamięci dzielonej
-extern int msg_id; // id kolejki wiadomości dla autobusów
-extern int msg_kasa_id; // id kolejki wiadomości dla kas
-extern int msg_odp_id; // id kolejk odpowiedzi autobus -> pasażer
+extern int sem_id; //id semaforów
+extern int shm_id; //id pamięci dzielonej
+extern int msg_id; //id kolejki wiadomości dla autobusów
+extern int msg_kasa_id; //id kolejki wiadomości dla kas
+extern int msg_odp_id; //id kolejk odpowiedzi autobus -> pasażer
 
 //funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);//Logi z kolorami i tagami

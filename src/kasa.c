@@ -33,18 +33,18 @@ void proces_kasa(int numer_kasy) {
     //podlaczenie do pamieci dzielonej
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
     if (shm == (void *)-1) {
-        perror("kasa shmat");
+        perror("kasa shmat"); 
         exit(1);
     }
     //operacje na semaforach
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
-    int obsluzonych = 0;
+    int obsluzonych = 0;//liczba obsluzonych pasazerow
 
     log_print(KOLOR_KASA, tag, "Otwarta. PID=%d", getpid());
 
-    //glowna petla - odbiera wiadomosci od pasazerow
+    //glowna petla  odbiera wiadomosci od pasazerow
     while (kasa_running && shm->symulacja_aktywna) {
         KasaRequest req;
         

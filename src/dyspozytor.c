@@ -8,7 +8,7 @@
 
 //PID-y procesow potomnych
 static pid_t pids_kasy[MAX_KASY] = {0}; //PID-y kas biletowych
-static int ile_kas = 0;            //liczba kas
+static int ile_kas = 0;//liczba kas
 static pid_t pids_busy[MAX_BUSES];//PID-y autobusow
 static int ile_busow = 0; //liczba autobusow
 static pid_t pid_generator = -1; //PID generatora pasazerow
