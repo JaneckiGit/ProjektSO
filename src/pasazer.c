@@ -140,7 +140,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             //sprawdzanie odpowiedzi od autobusu
             if (czekam_na_odpowiedz) {
                 OdpowiedzMsg odp;
-                if (msgrcv(msg_odp_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
+                if (msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
                            getpid(), IPC_NOWAIT) != -1) {
                     czekam_na_odpowiedz = 0;
                     bus_do_ktorego_wyslalem = 0;

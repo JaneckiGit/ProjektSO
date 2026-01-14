@@ -54,7 +54,6 @@ static void cleanup_ipc(void) {
     if (shm_id != -1) shmctl(shm_id, IPC_RMID, NULL);
     if (msg_id != -1) msgctl(msg_id, IPC_RMID, NULL);
     if (msg_kasa_id != -1) msgctl(msg_kasa_id, IPC_RMID, NULL);
-    if (msg_odp_id != -1) msgctl(msg_odp_id, IPC_RMID, NULL);
 }
 //zamkniecie wszystkich procesow potomnych
 //Wysyla SIGTERM i czeka na zakonczenie
@@ -137,9 +136,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     key_t key_shm =ftok(".", 'M');
     key_t key_msg =ftok(".", 'Q');
     key_t key_msg_kasa =ftok(".", 'K');
-    key_t key_msg_odp =ftok(".", 'O');
 
-    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1 || key_msg_odp == -1) {
+    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1) {
         perror("ftok");
         exit(1);
     }
@@ -148,9 +146,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
     msg_id = msgget(key_msg, IPC_CREAT | 0600);
     msg_kasa_id = msgget(key_msg_kasa, IPC_CREAT | 0600);
-    msg_odp_id = msgget(key_msg_odp, IPC_CREAT | 0600);
 
-    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1 || msg_odp_id == -1) {
+    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1) {
         perror("IPC create");
         cleanup_ipc();
         exit(1);

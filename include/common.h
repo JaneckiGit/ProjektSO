@@ -131,9 +131,8 @@ typedef struct {
 //zmienne IPC
 extern int sem_id; //id semaforów
 extern int shm_id; //id pamięci dzielonej
-extern int msg_id; //id kolejki wiadomości dla autobusów
-extern int msg_kasa_id; //id kolejki wiadomości dla kas
-extern int msg_odp_id; //id kolejk odpowiedzi autobus -> pasażer
+extern int msg_id; //id kolejki wiadomości dla autobusów (pasażer<->autobus)
+extern int msg_kasa_id; //id kolejki wiadomości dla kas (pasażer<->kasa)
 
 //funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);//Logi z kolorami i tagami

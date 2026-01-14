@@ -144,7 +144,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         semop(sem_id, &shm_unlock, 1);
                         //Wyslij odmowe do pasazera
                         OdpowiedzMsg odp_bez = { .mtype = bilet.pid_pasazera, .przyjety = 0 };
-                        msgsnd(msg_odp_id, &odp_bez, sizeof(OdpowiedzMsg) - sizeof(long), 0);
+                        msgsnd(msg_id, &odp_bez, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                         continue;
                     }
                     
@@ -216,7 +216,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         }
                         //potwierdzenie dla pasazera
                         OdpowiedzMsg odp = { .mtype = bilet.pid_pasazera, .przyjety = 1 };
-                        msgsnd(msg_odp_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
+                        msgsnd(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
 
                         //sprawdzenie czy autobus pelny
                         if (miejsca >= pojemnosc && rower_zajete >= rowery) {
@@ -230,7 +230,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
                         //odmowa dla pasazera
                         OdpowiedzMsg odp = { .mtype = bilet.pid_pasazera, .przyjety = 0 };
-                        msgsnd(msg_odp_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
+                        msgsnd(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                     }
                 }
                 usleep(200000);
