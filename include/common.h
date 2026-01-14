@@ -69,6 +69,7 @@ typedef struct {
     int vip_count;
     int total_przewiezionych;
     int odrzuconych_bez_biletu;
+    int rodzicow_z_dziecmi;  //liczba rodzicow z dziecmi
     int obsluzonych_kasa[MAX_KASY];
     //Rejestracja pasazerow (do sprawdzania biletow)
     pid_t registered_pids[MAX_REGISTERED]; 

@@ -262,6 +262,7 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
     semop(sem_id, &shm_lock, 1);
     shm->total_pasazerow += 2;
     shm->pasazerow_czeka += 2;
+    shm->rodzicow_z_dziecmi++;  //zliczanie rodzicow z dziecmi
     if (czy_vip) shm->vip_count++;
     semop(sem_id, &shm_unlock, 1);
 
