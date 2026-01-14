@@ -54,7 +54,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
 
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};  
-    int sem_drzwi = czy_rower ? SEM_DOOR_ROWER : SEM_DOOR_NORMAL;
     
     //flagi stanu pasazera
     pid_t bus_ktory_odmowil = 0;
@@ -97,16 +96,40 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                         bilet_wyslany = 1;
                     }
                 } else {
-                    struct sembuf wejdz = {sem_drzwi, -1, IPC_NOWAIT | SEM_UNDO};
-                    struct sembuf wyjdz = {sem_drzwi, 1, SEM_UNDO};
-                    if (semop(sem_id, &wejdz, 1) == 0) {
-                        if (shm->aktualny_bus_pid > 0) {
-                            if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
-                                             id_dziecka, wiek_dziecka) == 0) {
-                                bilet_wyslany = 1;
+                    //Pasazer z rowerem musi przejsc przez OBA semafory (rower + normalny)
+                    //Pasazer bez roweru tylko przez normalny
+                    if (czy_rower) {
+                        struct sembuf wejdz_r = {SEM_DOOR_ROWER, -1, IPC_NOWAIT | SEM_UNDO};
+                        struct sembuf wyjdz_r = {SEM_DOOR_ROWER, 1, SEM_UNDO};
+                        struct sembuf wejdz_n = {SEM_DOOR_NORMAL, -1, IPC_NOWAIT | SEM_UNDO};
+                        struct sembuf wyjdz_n = {SEM_DOOR_NORMAL, 1, SEM_UNDO};
+                        
+                        //najpierw drzwi rowerowe
+                        if (semop(sem_id, &wejdz_r, 1) == 0) {
+                            //potem drzwi normalne
+                            if (semop(sem_id, &wejdz_n, 1) == 0) {
+                                if (shm->aktualny_bus_pid > 0) {
+                                    if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
+                                                     id_dziecka, wiek_dziecka) == 0) {
+                                        bilet_wyslany = 1;
+                                    }
+                                }
+                                semop(sem_id, &wyjdz_n, 1);  //zwolnij normalne
                             }
+                            semop(sem_id, &wyjdz_r, 1);  //zwolnij rowerowe
                         }
-                        semop(sem_id, &wyjdz, 1);
+                    } else {
+                        struct sembuf wejdz = {SEM_DOOR_NORMAL, -1, IPC_NOWAIT | SEM_UNDO};
+                        struct sembuf wyjdz = {SEM_DOOR_NORMAL, 1, SEM_UNDO};
+                        if (semop(sem_id, &wejdz, 1) == 0) {
+                            if (shm->aktualny_bus_pid > 0) {
+                                if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
+                                                 id_dziecka, wiek_dziecka) == 0) {
+                                    bilet_wyslany = 1;
+                                }
+                            }
+                            semop(sem_id, &wyjdz, 1);
+                        }
                     }
                 }
                 if (bilet_wyslany) {

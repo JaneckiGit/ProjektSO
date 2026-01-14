@@ -166,8 +166,11 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     bool akceptuj = true;
                     
                     //sprawdzenie dostepnosci miejsc
+                    //Pasazer z rowerem zajmuje miejsce normalne + miejsce rowerowe
                     if (bilet.czy_rower) {
-                        if (shm->rowery_zajete + ile_osob > rowery) {//brak miejsc rowerowych
+                        //musi byc miejsce normalne I miejsce rowerowe
+                        if (shm->miejsca_zajete + ile_osob > pojemnosc ||
+                            shm->rowery_zajete + ile_osob > rowery) {
                             akceptuj = false;
                         }
                     } else {
@@ -178,6 +181,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     if (akceptuj) {
                         //zajecie miejsc
                         if (bilet.czy_rower) {
+                            //pasazer z rowerem zajmuje oba typy miejsc
+                            shm->miejsca_zajete += ile_osob;
                             shm->rowery_zajete += ile_osob;
                         } else {
                             shm->miejsca_zajete += ile_osob;
