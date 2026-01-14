@@ -107,7 +107,8 @@ typedef struct {
 typedef struct {
     long mtype;              // = PID pasazera
     int numer_kasy;          // Ktora kasa obsluzyla
-    int sukces;              // 1 = bilet kupiony
+    int sukces;              // 1 = bilet kupiony, 0 = odmowa
+    int brak_srodkow;        // 1 = odmowa z powodu braku srodkow
 } KasaResponse;
 
 //wiadomosc (autobus -> pasazer) (czy wsiadl czy odmowa)

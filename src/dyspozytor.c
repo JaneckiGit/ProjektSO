@@ -92,9 +92,11 @@ static void zapisz_raport_koncowy(SharedData *shm) {
         "Biletow: %d\n"
         "VIP: %d\n"
         "Rodzicow z dziecmi: %d\n"
+        "Odrzuconych bez biletu: %d\n"
         "========================================\n",
         shm->total_pasazerow, shm->total_przewiezionych,
-        shm->sprzedanych_biletow, shm->vip_count, shm->rodzicow_z_dziecmi);
+        shm->sprzedanych_biletow, shm->vip_count, shm->rodzicow_z_dziecmi,
+        shm->odrzuconych_bez_biletu);
     write(fd, buf, len);
 
     for(int i = 0; i < shm->param_K; i++) {
@@ -315,6 +317,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
         log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
         log_print(KOLOR_STAT, "STAT", "Rodzicow z dziecmi: %d", s->rodzicow_z_dziecmi);
+        log_print(KOLOR_STAT, "STAT", "Odrzuconych bez biletu: %d", s->odrzuconych_bez_biletu);
         for (int i = 0; i < s->param_K; i++) {
             log_print(KOLOR_STAT, "STAT", "KASA %d: %d", i+1, s->obsluzonych_kasa[i]);
         }

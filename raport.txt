@@ -1,179 +1,231 @@
 === RAPORT SYMULACJI AUTOBUSU PODMIEJSKIEGO ===
 
-[19:58:08] [MAIN  ] START: N=5 P=10 R=1 T=5000 K=1
-[19:58:08] [DYSP  ] Dyspozytor rozpoczął pracę. PID=7239
-[19:58:08] [DYSP  ] >>> Sygnały: kill -SIGUSR1 7239 | kill -SIGUSR2 7239 <<<
-[19:58:08] [KASA  ] KASA 1 uruchomiona. PID=7240
-[19:58:08] [BUS   ] BUS 1 uruchomiony. PID=7241
-[19:58:08] [KASA 1] Otwarta. PID=7240
-[19:58:08] [BUS   ] BUS 2 uruchomiony. PID=7242
-[19:58:08] [BUS 1 ] Miejsca normalne: 10, Miejsca rowerowe: 1, Ti=24691ms. PID=7241
-[19:58:08] [BUS   ] BUS 3 uruchomiony. PID=7243
-[19:58:08] [BUS 1 ] Wraca na dworzec (1585ms). PID=7241
-[19:58:08] [BUS 2 ] Miejsca normalne: 10, Miejsca rowerowe: 1, Ti=18543ms. PID=7242
-[19:58:08] [BUS 3 ] Miejsca normalne: 10, Miejsca rowerowe: 1, Ti=24927ms. PID=7243
-[19:58:08] [BUS   ] BUS 4 uruchomiony. PID=7244
-[19:58:08] [BUS 2 ] Wraca na dworzec (1540ms). PID=7242
-[19:58:08] [BUS 4 ] Miejsca normalne: 10, Miejsca rowerowe: 1, Ti=28361ms. PID=7244
-[19:58:08] [BUS 3 ] Wraca na dworzec (1135ms). PID=7243
-[19:58:08] [BUS   ] BUS 5 uruchomiony. PID=7245
-[19:58:08] [BUS 4 ] Wraca na dworzec (1477ms). PID=7244
-[19:58:08] [BUS 5 ] Miejsca normalne: 10, Miejsca rowerowe: 1, Ti=27151ms. PID=7245
-[19:58:08] [MAIN  ] Wszystkie procesy uruchomione.
-[19:58:08] [BUS 5 ] Wraca na dworzec (1328ms). PID=7245
-[19:58:08] [PAS 0 ] Wszedl na dworzec (wiek=71, rower). PID=7247
-[19:58:08] [PAS 0 ] Kolejka do KASA 1. PID=7247
-[19:58:08] [KASA 1] Obsluguje PAS 0 (wiek=71, biletow=1)
-[19:58:08] [KASA 1] Sprzedano 1 bilet(y) PAS 0
-[19:58:08] [PAS 0 ] Kupil 1 bilet(y) w KASA 1. PID=7247
-[19:58:09] [PAS 1 ] Wszedl na dworzec (wiek=61). PID=7258
-[19:58:09] [PAS 1 ] Kolejka do KASA 1. PID=7258
-[19:58:09] [KASA 1] Obsluguje PAS 1 (wiek=61, biletow=1)
-[19:58:09] [BUS 3 ] Czeka na peron. PID=7243
-[19:58:09] [BUS 3 ] [Kurs #1] Na peronie. PID=7243, Miejsca: 0/10, Rowery: 0/1
-[19:58:09] [KASA 1] Sprzedano 1 bilet(y) PAS 1
-[19:58:09] [PAS 1 ] Kupil 1 bilet(y) w KASA 1. PID=7258
-[19:58:09] [BUS 5 ] Czeka na peron. PID=7245
-[19:58:09] [BUS 3 ] Kierowca: PAS 1 - bilet OK.
-[19:58:09] [BUS 3 ] Wsiadl PAS 1 (PID=7258, wiek=61). Miejsca: 1/10, Rowery: 0/1
-[19:58:09] [BUS 4 ] Czeka na peron. PID=7244
-[19:58:10] [BUS 2 ] Czeka na peron. PID=7242
-[19:58:10] [BUS 3 ] Kierowca: PAS 0 - bilet OK.
-[19:58:10] [BUS 3 ] Wsiadl PAS 0 (PID=7247, wiek=71) +rower. Miejsca: 2/10, Rowery: 1/1
-[19:58:10] [BUS 1 ] Czeka na peron. PID=7241
-[19:58:10] [PAS 2 ] Opiekun (wiek=19) + dziecko PAS 2 (6 lat) - wchodza na dworzec. PID=7299
-[19:58:10] [PAS 2 ] Dziecko PAS 2 jako watek. TID=281473113125344, PID=7299
-[19:58:10] [PAS 2 ] [WATEK] Dziecko (wiek=6) z rodzicem TID=281473113125344
-[19:58:10] [PAS 2 ] Kolejka do KASA 1. PID=7299
-[19:58:10] [KASA 1] Obsluguje PAS 2 (wiek=19, biletow=2)
-[19:58:11] [KASA 1] Sprzedano 2 bilet(y) PAS 2
-[19:58:11] [PAS 2 ] Kupil 2 bilet(y) w KASA 1. PID=7299
-[19:58:11] [BUS 3 ] Kierowca: PAS 2 - bilet OK.
-[19:58:11] [BUS 3 ] Wsiadl PAS 2 (PID=7299, wiek=19) z dzieckiem (wiek=6). Miejsca: 4/10, Rowery: 1/1
-[19:58:11] [PAS 2 ] [WATEK] Dziecko konczy dzialanie TID=281473113125344
-[19:58:11] [PAS 3 ] Wszedl na dworzec (wiek=22). PID=7302
-[19:58:11] [PAS 3 ] Kolejka do KASA 1. PID=7302
-[19:58:11] [KASA 1] Obsluguje PAS 3 (wiek=22, biletow=1)
-[19:58:12] [KASA 1] Sprzedano 1 bilet(y) PAS 3
-[19:58:12] [PAS 3 ] Kupil 1 bilet(y) w KASA 1. PID=7302
-[19:58:12] [BUS 3 ] Kierowca: PAS 3 - bilet OK.
-[19:58:12] [BUS 3 ] Wsiadl PAS 3 (PID=7302, wiek=22). Miejsca: 5/10, Rowery: 1/1
-[19:58:13] [PAS 4 ] Wszedl na dworzec (wiek=57). PID=7325
-[19:58:13] [PAS 4 ] Kolejka do KASA 1. PID=7325
-[19:58:13] [KASA 1] Obsluguje PAS 4 (wiek=57, biletow=1)
-[19:58:13] [KASA 1] Sprzedano 1 bilet(y) PAS 4
-[19:58:13] [PAS 4 ] Kupil 1 bilet(y) w KASA 1. PID=7325
-[19:58:13] [BUS 3 ] Kierowca: PAS 4 - bilet OK.
-[19:58:13] [BUS 3 ] Wsiadl PAS 4 (PID=7325, wiek=57). Miejsca: 6/10, Rowery: 1/1
-[19:58:13] [PAS 5 ] Wszedl na dworzec (wiek=40). PID=7348
-[19:58:13] [PAS 5 ] Kolejka do KASA 1. PID=7348
-[19:58:14] [KASA 1] Obsluguje PAS 5 (wiek=40, biletow=1)
-[19:58:14] [KASA 1] Sprzedano 1 bilet(y) PAS 5
-[19:58:14] [PAS 5 ] Kupil 1 bilet(y) w KASA 1. PID=7348
-[19:58:14] [BUS 3 ] Kierowca: PAS 5 - bilet OK.
-[19:58:14] [BUS 3 ] Wsiadl PAS 5 (PID=7348, wiek=40). Miejsca: 7/10, Rowery: 1/1
-[19:58:14] [BUS 3 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=7243
-[19:58:14] [BUS 3 ] ODJAZD! Zabral 7 osob. W trasie: 7. PID=7243
-[19:58:14] [BUS 3 ] Jedzie do miejsca docelowego (24927ms). PID=7243
-[19:58:14] [BUS 5 ] [Kurs #1] Na peronie. PID=7245, Miejsca: 0/10, Rowery: 0/1
-[19:58:15] [PAS 6 ] Wszedl na dworzec (wiek=73). PID=7354
-[19:58:15] [PAS 6 ] Kolejka do KASA 1. PID=7354
-[19:58:15] [KASA 1] Obsluguje PAS 6 (wiek=73, biletow=1)
-[19:58:15] [KASA 1] Sprzedano 1 bilet(y) PAS 6
-[19:58:15] [PAS 6 ] Kupil 1 bilet(y) w KASA 1. PID=7354
-[19:58:15] [BUS 5 ] Kierowca: PAS 6 - bilet OK.
-[19:58:15] [BUS 5 ] Wsiadl PAS 6 (PID=7354, wiek=73). Miejsca: 1/10, Rowery: 0/1
-[19:58:16] [PAS 7 ] Opiekun (wiek=65) + dziecko PAS 7 (1 lat) - wchodza na dworzec. PID=7359
-[19:58:16] [PAS 7 ] Dziecko PAS 7 jako watek. TID=281473137607136, PID=7359
-[19:58:16] [PAS 7 ] [WATEK] Dziecko (wiek=1) z rodzicem TID=281473137607136
-[19:58:16] [PAS 7 ] Kolejka do KASA 1. PID=7359
-[19:58:16] [KASA 1] Obsluguje PAS 7 (wiek=65, biletow=2)
-[19:58:17] [KASA 1] Sprzedano 2 bilet(y) PAS 7
-[19:58:17] [PAS 7 ] Kupil 2 bilet(y) w KASA 1. PID=7359
-[19:58:17] [BUS 5 ] Kierowca: PAS 7 - bilet OK.
-[19:58:17] [BUS 5 ] Wsiadl PAS 7 (PID=7359, wiek=65) z dzieckiem (wiek=1). Miejsca: 3/10, Rowery: 0/1
-[19:58:17] [PAS 7 ] [WATEK] Dziecko konczy dzialanie TID=281473137607136
-[19:58:17] [PAS 8 ] Wszedl na dworzec (wiek=29). PID=7384
-[19:58:17] [PAS 8 ] Kolejka do KASA 1. PID=7384
-[19:58:17] [KASA 1] Obsluguje PAS 8 (wiek=29, biletow=1)
-[19:58:18] [KASA 1] Sprzedano 1 bilet(y) PAS 8
-[19:58:18] [PAS 8 ] Kupil 1 bilet(y) w KASA 1. PID=7384
-[19:58:18] [BUS 5 ] Kierowca: PAS 8 - bilet OK.
-[19:58:18] [BUS 5 ] Wsiadl PAS 8 (PID=7384, wiek=29). Miejsca: 4/10, Rowery: 0/1
-[19:58:18] [PAS 9 ] Wszedl na dworzec (wiek=20). PID=7410
-[19:58:18] [PAS 9 ] Kolejka do KASA 1. PID=7410
-[19:58:18] [KASA 1] Obsluguje PAS 9 (wiek=20, biletow=1)
-[19:58:19] [KASA 1] Sprzedano 1 bilet(y) PAS 9
-[19:58:19] [PAS 9 ] Kupil 1 bilet(y) w KASA 1. PID=7410
-[19:58:19] [BUS 5 ] Kierowca: PAS 9 - bilet OK.
-[19:58:19] [BUS 5 ] Wsiadl PAS 9 (PID=7410, wiek=20). Miejsca: 5/10, Rowery: 0/1
-[19:58:19] [BUS 5 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=7245
-[19:58:19] [BUS 5 ] ODJAZD! Zabral 5 osob. W trasie: 12. PID=7245
-[19:58:19] [BUS 5 ] Jedzie do miejsca docelowego (27151ms). PID=7245
-[19:58:19] [BUS 1 ] [Kurs #1] Na peronie. PID=7241, Miejsca: 0/10, Rowery: 0/1
-[19:58:20] [PAS 10] Opiekun (wiek=47) + dziecko PAS 10 (7 lat) - wchodza na dworzec. PID=7412
-[19:58:20] [PAS 10] Dziecko PAS 10 jako watek. TID=281473396867552, PID=7412
-[19:58:20] [PAS 10] [WATEK] Dziecko (wiek=7) z rodzicem TID=281473396867552
-[19:58:20] [PAS 10] Kolejka do KASA 1. PID=7412
-[19:58:20] [KASA 1] Obsluguje PAS 10 (wiek=47, biletow=2)
-[19:58:20] [KASA 1] Sprzedano 2 bilet(y) PAS 10
-[19:58:20] [PAS 10] Kupil 2 bilet(y) w KASA 1. PID=7412
-[19:58:20] [BUS 1 ] Kierowca: PAS 10 - bilet OK.
-[19:58:20] [BUS 1 ] Wsiadl PAS 10 (PID=7412, wiek=47) z dzieckiem (wiek=7). Miejsca: 2/10, Rowery: 0/1
-[19:58:20] [PAS 10] [WATEK] Dziecko konczy dzialanie TID=281473396867552
-[19:58:21] [PAS 11] Opiekun (wiek=68) + dziecko PAS 11 (7 lat) - wchodza na dworzec. PID=7423
-[19:58:21] [PAS 11] Dziecko PAS 11 jako watek. TID=281473680556512, PID=7423
-[19:58:21] [PAS 11] [WATEK] Dziecko (wiek=7) z rodzicem TID=281473680556512
-[19:58:21] [PAS 11] Kolejka do KASA 1. PID=7423
-[19:58:21] [KASA 1] Obsluguje PAS 11 (wiek=68, biletow=2)
-[19:58:22] [BUS 4 ] [Kurs #1] Na peronie. PID=7244, Miejsca: 0/10, Rowery: 0/1
-[19:58:22] [DYSP  ] Zamykanie symulacji
-[19:58:22] [BUS 5 ] Miejsce docelowe - pasazerowie wysiedli (5). PID=7245
-[19:58:22] [BUS 2 ] [Kurs #1] Na peronie. PID=7242, Miejsca: 0/10, Rowery: 0/1
-[19:58:22] [BUS 3 ] Miejsce docelowe - pasazerowie wysiedli (7). PID=7243
-[19:58:22] [KASA 1] Sprzedano 2 bilet(y) PAS 11
-[19:58:22] [BUS 1 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=7241
-[19:58:22] [BUS 4 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=7244
-[19:58:22] [DYSP  ] Czekam na zakonczenie procesow
-[19:58:22] [BUS 5 ] KONIEC. Kursow: 1, Przewiezionych: 5. PID=7245
-[19:58:22] [BUS 2 ] Stacja zamknieta - nie przyjmuje pasazerow, odjezdzam. PID=7242
-[19:58:22] [BUS 3 ] KONIEC. Kursow: 1, Przewiezionych: 7. PID=7243
-[19:58:22] [KASA 1] Zamknieta. Obsluzono: 12. PID=7240
-[19:58:22] [BUS 1 ] ODJAZD! Zabral 2 osob. W trasie: 2. PID=7241
-[19:58:22] [BUS 2 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=7242
-[19:58:22] [BUS 4 ] ODJAZD! Zabral 0 osob. W trasie: 2. PID=7244
-[19:58:22] [BUS 1 ] Jedzie do miejsca docelowego (24691ms). PID=7241
-[19:58:22] [BUS 1 ] Miejsce docelowe - pasazerowie wysiedli (2). PID=7241
-[19:58:22] [BUS 4 ] Jedzie do miejsca docelowego (28361ms). PID=7244
-[19:58:22] [BUS 2 ] ODJAZD! Zabral 0 osob. W trasie: 2. PID=7242
-[19:58:22] [BUS 1 ] KONIEC. Kursow: 1, Przewiezionych: 2. PID=7241
-[19:58:22] [BUS 4 ] Miejsce docelowe - pasazerowie wysiedli (0). PID=7244
-[19:58:22] [BUS 2 ] Jedzie do miejsca docelowego (18543ms). PID=7242
-[19:58:22] [BUS 4 ] Stacja zamknieta, pusty kurs - koncze. PID=7244
-[19:58:22] [BUS 2 ] Miejsce docelowe - pasazerowie wysiedli (0). PID=7242
-[19:58:22] [BUS 4 ] KONIEC. Kursow: 1, Przewiezionych: 0. PID=7244
-[19:58:22] [BUS 2 ] Stacja zamknieta, pusty kurs - koncze. PID=7242
-[19:58:22] [BUS 2 ] KONIEC. Kursow: 1, Przewiezionych: 0. PID=7242
-[19:58:22] [STAT  ] ========================================
-[19:58:22] [STAT  ] PODSUMOWANIE
-[19:58:22] [STAT  ] ========================================
-[19:58:22] [STAT  ] Pasazerow: 16
-[19:58:22] [STAT  ] Przewiezionych: 14
-[19:58:22] [STAT  ] Opuscilo dworzec: 2
-[19:58:22] [STAT  ] Biletow: 16
-[19:58:22] [STAT  ] VIP: 0
-[19:58:22] [STAT  ] Rodzicow z dziecmi: 4
-[19:58:22] [STAT  ] KASA 1: 12
-[19:58:22] [STAT  ] ========================================
+[20:14:08] [MAIN  ] START: N=5 P=10 R=3 T=5000 K=1
+[20:14:08] [DYSP  ] Dyspozytor rozpoczął pracę. PID=14782
+[20:14:08] [DYSP  ] >>> Sygnały: kill -SIGUSR1 14782 | kill -SIGUSR2 14782 <<<
+[20:14:08] [KASA  ] KASA 1 uruchomiona. PID=14783
+[20:14:08] [BUS   ] BUS 1 uruchomiony. PID=14784
+[20:14:08] [BUS   ] BUS 2 uruchomiony. PID=14785
+[20:14:08] [BUS   ] BUS 3 uruchomiony. PID=14786
+[20:14:08] [BUS 1 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=18467ms. PID=14784
+[20:14:08] [KASA 1] Otwarta. PID=14783
+[20:14:08] [BUS 2 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=22692ms. PID=14785
+[20:14:08] [BUS 3 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=17730ms. PID=14786
+[20:14:08] [BUS   ] BUS 4 uruchomiony. PID=14787
+[20:14:08] [BUS 1 ] Wraca na dworzec (1469ms). PID=14784
+[20:14:08] [BUS 4 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=20342ms. PID=14787
+[20:14:08] [BUS 2 ] Wraca na dworzec (1263ms). PID=14785
+[20:14:08] [BUS 3 ] Wraca na dworzec (1094ms). PID=14786
+[20:14:08] [BUS   ] BUS 5 uruchomiony. PID=14788
+[20:14:08] [BUS 5 ] Miejsca normalne: 10, Miejsca rowerowe: 3, Ti=15699ms. PID=14788
+[20:14:08] [BUS 4 ] Wraca na dworzec (1939ms). PID=14787
+[20:14:08] [MAIN  ] Wszystkie procesy uruchomione.
+[20:14:08] [BUS 5 ] Wraca na dworzec (1511ms). PID=14788
+[20:14:08] [PAS 0 ] Wszedl na dworzec (wiek=21). PID=14790
+[20:14:08] [PAS 0 ] Kolejka do KASA 1. PID=14790
+[20:14:08] [KASA 1] Obsluguje PAS 0 (wiek=21, biletow=1)
+[20:14:08] [KASA 1] Odmowa sprzedazy PAS 0 - BRAK SRODKOW
+[20:14:08] [PAS 0 ] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=14790
+[20:14:09] [BUS 3 ] Czeka na peron. PID=14786
+[20:14:09] [BUS 3 ] [Kurs #1] Na peronie. PID=14786, Miejsca: 0/10, Rowery: 0/3
+[20:14:09] [BUS 2 ] Czeka na peron. PID=14785
+[20:14:09] [BUS 3 ] Kierowca: PAS 0 BEZ BILETU - odmowa!
+[20:14:09] [PAS 0 ] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=14790
+[20:14:09] [BUS 1 ] Czeka na peron. PID=14784
+[20:14:09] [BUS 5 ] Czeka na peron. PID=14788
+[20:14:09] [PAS 1 ] Wszedl na dworzec (wiek=47). PID=14814
+[20:14:09] [PAS 1 ] Kolejka do KASA 1. PID=14814
+[20:14:09] [KASA 1] Obsluguje PAS 1 (wiek=47, biletow=1)
+[20:14:10] [KASA 1] Odmowa sprzedazy PAS 1 - BRAK SRODKOW
+[20:14:10] [PAS 1 ] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=14814
+[20:14:10] [BUS 3 ] Kierowca: PAS 1 BEZ BILETU - odmowa!
+[20:14:10] [PAS 1 ] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=14814
+[20:14:10] [BUS 4 ] Czeka na peron. PID=14787
+[20:14:10] [PAS 2 ] Wszedl na dworzec (wiek=57, rower). PID=14857
+[20:14:10] [PAS 2 ] Kolejka do KASA 1. PID=14857
+[20:14:10] [KASA 1] Obsluguje PAS 2 (wiek=57, biletow=1)
+[20:14:11] [KASA 1] Sprzedano 1 bilet(y) PAS 2
+[20:14:11] [PAS 2 ] Kupil 1 bilet(y) w KASA 1. PID=14857
+[20:14:11] [BUS 3 ] Kierowca: PAS 2 - bilet OK.
+[20:14:11] [BUS 3 ] Wsiadl PAS 2 (PID=14857, wiek=57) +rower. Miejsca: 1/10, Rowery: 1/3
+[20:14:12] [PAS 3 ] Wszedl na dworzec (wiek=34). PID=14885
+[20:14:12] [PAS 3 ] Kolejka do KASA 1. PID=14885
+[20:14:12] [KASA 1] Obsluguje PAS 3 (wiek=34, biletow=1)
+[20:14:12] [KASA 1] Sprzedano 1 bilet(y) PAS 3
+[20:14:12] [PAS 3 ] Kupil 1 bilet(y) w KASA 1. PID=14885
+[20:14:12] [BUS 3 ] Kierowca: PAS 3 - bilet OK.
+[20:14:12] [BUS 3 ] Wsiadl PAS 3 (PID=14885, wiek=34). Miejsca: 2/10, Rowery: 1/3
+[20:14:14] [PAS 4 ] Wszedl na dworzec (wiek=79). PID=14895
+[20:14:14] [PAS 4 ] Kolejka do KASA 1. PID=14895
+[20:14:14] [BUS 3 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=14786
+[20:14:14] [BUS 3 ] ODJAZD! Zabral 2 osob. W trasie: 2. PID=14786
+[20:14:14] [BUS 3 ] Jedzie do miejsca docelowego (17730ms). PID=14786
+[20:14:14] [BUS 2 ] [Kurs #1] Na peronie. PID=14785, Miejsca: 0/10, Rowery: 0/3
+[20:14:14] [KASA 1] Obsluguje PAS 4 (wiek=79, biletow=1)
+[20:14:14] [KASA 1] Odmowa sprzedazy PAS 4 - BRAK SRODKOW
+[20:14:14] [PAS 4 ] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=14895
+[20:14:14] [BUS 2 ] Kierowca: PAS 4 BEZ BILETU - odmowa!
+[20:14:14] [PAS 4 ] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=14895
+[20:14:16] [PAS 5 ] Opiekun (wiek=24) + dziecko PAS 5 (4 lat) - wchodza na dworzec. PID=14933
+[20:14:16] [PAS 5 ] Dziecko PAS 5 jako watek. TID=281473638040032, PID=14933
+[20:14:16] [PAS 5 ] [WATEK] Dziecko (wiek=4) z rodzicem TID=281473638040032
+[20:14:16] [PAS 5 ] Kolejka do KASA 1. PID=14933
+[20:14:16] [KASA 1] Obsluguje PAS 5 (wiek=24, biletow=2)
+[20:14:16] [KASA 1] Sprzedano 2 bilet(y) PAS 5
+[20:14:16] [PAS 5 ] Kupil 2 bilet(y) w KASA 1. PID=14933
+[20:14:16] [BUS 2 ] Kierowca: PAS 5 - bilet OK.
+[20:14:16] [BUS 2 ] Wsiadl PAS 5 (PID=14933, wiek=24) z dzieckiem (wiek=4). Miejsca: 2/10, Rowery: 0/3
+[20:14:16] [PAS 5 ] [WATEK] Dziecko konczy dzialanie TID=281473638040032
+[20:14:17] [PAS 6 ] Wszedl na dworzec (wiek=71). PID=14943
+[20:14:17] [PAS 6 ] Kolejka do KASA 1. PID=14943
+[20:14:17] [KASA 1] Obsluguje PAS 6 (wiek=71, biletow=1)
+[20:14:17] [KASA 1] Sprzedano 1 bilet(y) PAS 6
+[20:14:17] [PAS 6 ] Kupil 1 bilet(y) w KASA 1. PID=14943
+[20:14:17] [BUS 2 ] Kierowca: PAS 6 - bilet OK.
+[20:14:17] [BUS 2 ] Wsiadl PAS 6 (PID=14943, wiek=71). Miejsca: 3/10, Rowery: 0/3
+[20:14:18] [PAS 7 ] Wszedl na dworzec (wiek=59). PID=14952
+[20:14:18] [PAS 7 ] Kolejka do KASA 1. PID=14952
+[20:14:18] [KASA 1] Obsluguje PAS 7 (wiek=59, biletow=1)
+[20:14:18] [KASA 1] Odmowa sprzedazy PAS 7 - BRAK SRODKOW
+[20:14:18] [PAS 7 ] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=14952
+[20:14:19] [BUS 2 ] Kierowca: PAS 7 BEZ BILETU - odmowa!
+[20:14:19] [PAS 7 ] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=14952
+[20:14:19] [PAS 8 ] Wszedl na dworzec (wiek=66). PID=14957
+[20:14:19] [PAS 8 ] Kolejka do KASA 1. PID=14957
+[20:14:19] [KASA 1] Obsluguje PAS 8 (wiek=66, biletow=1)
+[20:14:19] [BUS 2 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=14785
+[20:14:19] [BUS 2 ] ODJAZD! Zabral 3 osob. W trasie: 5. PID=14785
+[20:14:19] [BUS 2 ] Jedzie do miejsca docelowego (22692ms). PID=14785
+[20:14:19] [BUS 4 ] [Kurs #1] Na peronie. PID=14787, Miejsca: 0/10, Rowery: 0/3
+[20:14:19] [KASA 1] Sprzedano 1 bilet(y) PAS 8
+[20:14:19] [PAS 8 ] Kupil 1 bilet(y) w KASA 1. PID=14957
+[20:14:19] [BUS 4 ] Kierowca: PAS 8 - bilet OK.
+[20:14:19] [BUS 4 ] Wsiadl PAS 8 (PID=14957, wiek=66). Miejsca: 1/10, Rowery: 0/3
+[20:14:21] [PAS 9 ] Wszedl na dworzec (wiek=13, rower). PID=14999
+[20:14:21] [PAS 9 ] Kolejka do KASA 1. PID=14999
+[20:14:21] [KASA 1] Obsluguje PAS 9 (wiek=13, biletow=1)
+[20:14:21] [KASA 1] Sprzedano 1 bilet(y) PAS 9
+[20:14:21] [PAS 9 ] Kupil 1 bilet(y) w KASA 1. PID=14999
+[20:14:21] [BUS 4 ] Kierowca: PAS 9 - bilet OK.
+[20:14:21] [BUS 4 ] Wsiadl PAS 9 (PID=14999, wiek=13) +rower. Miejsca: 2/10, Rowery: 1/3
+[20:14:21] [PAS 10] Opiekun (wiek=68) + dziecko PAS 10 (1 lat) - wchodza na dworzec. PID=15004
+[20:14:21] [PAS 10] Dziecko PAS 10 jako watek. TID=281473759842784, PID=15004
+[20:14:21] [PAS 10] [WATEK] Dziecko (wiek=1) z rodzicem TID=281473759842784
+[20:14:21] [PAS 10] Kolejka do KASA 1. PID=15004
+[20:14:21] [KASA 1] Obsluguje PAS 10 (wiek=68, biletow=2)
+[20:14:22] [KASA 1] Sprzedano 2 bilet(y) PAS 10
+[20:14:22] [PAS 10] Kupil 2 bilet(y) w KASA 1. PID=15004
+[20:14:22] [BUS 4 ] Kierowca: PAS 10 - bilet OK.
+[20:14:22] [BUS 4 ] Wsiadl PAS 10 (PID=15004, wiek=68) z dzieckiem (wiek=1). Miejsca: 4/10, Rowery: 1/3
+[20:14:22] [PAS 10] [WATEK] Dziecko konczy dzialanie TID=281473759842784
+[20:14:23] [PAS 11] Opiekun (wiek=19) + dziecko PAS 11 (1 lat) - wchodza na dworzec. PID=15014
+[20:14:23] [PAS 11] Dziecko PAS 11 jako watek. TID=281473276170720, PID=15014
+[20:14:23] [PAS 11] [WATEK] Dziecko (wiek=1) z rodzicem TID=281473276170720
+[20:14:23] [PAS 11] Kolejka do KASA 1. PID=15014
+[20:14:23] [KASA 1] Obsluguje PAS 11 (wiek=19, biletow=2)
+[20:14:24] [KASA 1] Odmowa sprzedazy PAS 11 - BRAK SRODKOW
+[20:14:24] [PAS 11] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=15014
+[20:14:24] [BUS 4 ] Kierowca: PAS 11 BEZ BILETU - odmowa!
+[20:14:24] [PAS 11] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=15014
+[20:14:24] [PAS 11] Opiekun + dziecko PAS 11 opuszczaja dworzec. PID=15014
+[20:14:24] [PAS 11] [WATEK] Dziecko konczy dzialanie TID=281473276170720
+[20:14:24] [PAS 12] Wszedl na dworzec (wiek=11). PID=15017
+[20:14:24] [PAS 12] Kolejka do KASA 1. PID=15017
+[20:14:24] [KASA 1] Obsluguje PAS 12 (wiek=11, biletow=1)
+[20:14:24] [BUS 4 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=14787
+[20:14:24] [BUS 4 ] ODJAZD! Zabral 4 osob. W trasie: 9. PID=14787
+[20:14:24] [BUS 4 ] Jedzie do miejsca docelowego (20342ms). PID=14787
+[20:14:24] [BUS 1 ] [Kurs #1] Na peronie. PID=14784, Miejsca: 0/10, Rowery: 0/3
+[20:14:24] [KASA 1] Sprzedano 1 bilet(y) PAS 12
+[20:14:24] [PAS 12] Kupil 1 bilet(y) w KASA 1. PID=15017
+[20:14:25] [BUS 1 ] Kierowca: PAS 12 - bilet OK.
+[20:14:25] [BUS 1 ] Wsiadl PAS 12 (PID=15017, wiek=11). Miejsca: 1/10, Rowery: 0/3
+[20:14:26] [PAS 13] Wszedl na dworzec (wiek=77). PID=15064
+[20:14:26] [PAS 13] Kolejka do KASA 1. PID=15064
+[20:14:26] [KASA 1] Obsluguje PAS 13 (wiek=77, biletow=1)
+[20:14:26] [KASA 1] Sprzedano 1 bilet(y) PAS 13
+[20:14:26] [PAS 13] Kupil 1 bilet(y) w KASA 1. PID=15064
+[20:14:26] [BUS 1 ] Kierowca: PAS 13 - bilet OK.
+[20:14:26] [BUS 1 ] Wsiadl PAS 13 (PID=15064, wiek=77). Miejsca: 2/10, Rowery: 0/3
+[20:14:27] [PAS 14] Opiekun (wiek=68) + dziecko PAS 14 (2 lat) - wchodza na dworzec. PID=15069
+[20:14:27] [PAS 14] Dziecko PAS 14 jako watek. TID=281472984007136, PID=15069
+[20:14:27] [PAS 14] [WATEK] Dziecko (wiek=2) z rodzicem TID=281472984007136
+[20:14:27] [PAS 14] Kolejka do KASA 1. PID=15069
+[20:14:27] [KASA 1] Obsluguje PAS 14 (wiek=68, biletow=2)
+[20:14:27] [KASA 1] Sprzedano 2 bilet(y) PAS 14
+[20:14:27] [PAS 14] Kupil 2 bilet(y) w KASA 1. PID=15069
+[20:14:27] [BUS 1 ] Kierowca: PAS 14 - bilet OK.
+[20:14:27] [BUS 1 ] Wsiadl PAS 14 (PID=15069, wiek=68) z dzieckiem (wiek=2). Miejsca: 4/10, Rowery: 0/3
+[20:14:27] [PAS 14] [WATEK] Dziecko konczy dzialanie TID=281472984007136
+[20:14:28] [PAS 15] Wszedl na dworzec (wiek=55). PID=15076
+[20:14:28] [PAS 15] Kolejka do KASA 1. PID=15076
+[20:14:28] [KASA 1] Obsluguje PAS 15 (wiek=55, biletow=1)
+[20:14:28] [KASA 1] Odmowa sprzedazy PAS 15 - BRAK SRODKOW
+[20:14:28] [PAS 15] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=15076
+[20:14:29] [BUS 1 ] Kierowca: PAS 15 BEZ BILETU - odmowa!
+[20:14:29] [PAS 15] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=15076
+[20:14:29] [PAS 16] Wszedl na dworzec (wiek=46). PID=15081
+[20:14:29] [PAS 16] Kolejka do KASA 1. PID=15081
+[20:14:29] [KASA 1] Obsluguje PAS 16 (wiek=46, biletow=1)
+[20:14:29] [BUS 1 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=14784
+[20:14:29] [BUS 1 ] ODJAZD! Zabral 4 osob. W trasie: 13. PID=14784
+[20:14:29] [BUS 1 ] Jedzie do miejsca docelowego (18467ms). PID=14784
+[20:14:29] [BUS 5 ] [Kurs #1] Na peronie. PID=14788, Miejsca: 0/10, Rowery: 0/3
+[20:14:29] [KASA 1] Odmowa sprzedazy PAS 16 - BRAK SRODKOW
+[20:14:29] [PAS 16] BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=15081
+[20:14:29] [BUS 5 ] Kierowca: PAS 16 BEZ BILETU - odmowa!
+[20:14:30] [PAS 16] Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=15081
+[20:14:30] [PAS 17] Wszedl na dworzec (wiek=39, rower). PID=15101
+[20:14:30] [PAS 17] Kolejka do KASA 1. PID=15101
+[20:14:30] [KASA 1] Obsluguje PAS 17 (wiek=39, biletow=1)
+[20:14:31] [KASA 1] Sprzedano 1 bilet(y) PAS 17
+[20:14:31] [PAS 17] Kupil 1 bilet(y) w KASA 1. PID=15101
+[20:14:31] [BUS 5 ] Kierowca: PAS 17 - bilet OK.
+[20:14:31] [BUS 5 ] Wsiadl PAS 17 (PID=15101, wiek=39) +rower. Miejsca: 1/10, Rowery: 1/3
+[20:14:32] [BUS 3 ] Miejsce docelowe - pasazerowie wysiedli (2). PID=14786
+[20:14:32] [BUS 3 ] Wraca na dworzec (10771ms). PID=14786
+[20:14:32] [PAS 18] Wszedl na dworzec (wiek=65). PID=15128
+[20:14:32] [PAS 18] Kolejka do KASA 1. PID=15128
+[20:14:32] [KASA 1] Obsluguje PAS 18 (wiek=65, biletow=1)
+[20:14:32] [BUS 4 ] Miejsce docelowe - pasazerowie wysiedli (4). PID=14787
+[20:14:32] [BUS 5 ] ZAMYKAM DRZWI PRZED ODJAZDEM. PID=14788
+[20:14:32] [KASA 1] Sprzedano 1 bilet(y) PAS 18
+[20:14:32] [BUS 3 ] Warunki zakonczenia - koncze. PID=14786
+[20:14:32] [BUS 1 ] Miejsce docelowe - pasazerowie wysiedli (4). PID=14784
+[20:14:32] [BUS 2 ] Miejsce docelowe - pasazerowie wysiedli (3). PID=14785
+[20:14:32] [DYSP  ] Zamykanie symulacji
+[20:14:32] [BUS 4 ] KONIEC. Kursow: 1, Przewiezionych: 4. PID=14787
+[20:14:32] [BUS 5 ] ODJAZD! Zabral 1 osob. W trasie: 1. PID=14788
+[20:14:32] [KASA 1] Zamknieta. Obsluzono: 12. PID=14783
+[20:14:32] [DYSP  ] Czekam na zakonczenie procesow
+[20:14:32] [BUS 3 ] KONIEC. Kursow: 1, Przewiezionych: 2. PID=14786
+[20:14:32] [BUS 1 ] KONIEC. Kursow: 1, Przewiezionych: 4. PID=14784
+[20:14:32] [BUS 2 ] KONIEC. Kursow: 1, Przewiezionych: 3. PID=14785
+[20:14:32] [BUS 5 ] Jedzie do miejsca docelowego (15699ms). PID=14788
+[20:14:32] [BUS 5 ] Miejsce docelowe - pasazerowie wysiedli (1). PID=14788
+[20:14:32] [BUS 5 ] KONIEC. Kursow: 1, Przewiezionych: 1. PID=14788
+[20:14:32] [STAT  ] ========================================
+[20:14:32] [STAT  ] PODSUMOWANIE
+[20:14:32] [STAT  ] ========================================
+[20:14:32] [STAT  ] Pasazerow: 23
+[20:14:32] [STAT  ] Przewiezionych: 14
+[20:14:32] [STAT  ] Opuscilo dworzec: 9
+[20:14:32] [STAT  ] Biletow: 15
+[20:14:32] [STAT  ] VIP: 0
+[20:14:32] [STAT  ] Rodzicow z dziecmi: 4
+[20:14:32] [STAT  ] Odrzuconych bez biletu: 7
+[20:14:32] [STAT  ] KASA 1: 12
+[20:14:32] [STAT  ] ========================================
 
 ========================================
        RAPORT KONCOWY SYMULACJI
 ========================================
-Pasazerow: 16
+Pasazerow: 23
 Przewiezionych: 14
-Biletow: 16
+Biletow: 15
 VIP: 0
 Rodzicow z dziecmi: 4
+Odrzuconych bez biletu: 7
 ========================================
 KASA 1 obsluzyla: 12 pasazerow
-[19:58:22] [MAIN  ] Koniec.
+[20:14:32] [MAIN  ] Koniec.

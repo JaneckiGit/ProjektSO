@@ -64,8 +64,18 @@ void proces_kasa(int numer_kasy) {
             //sprawdz czy stacja otwarta - jesli nie, odmow sprzedazy
             if (!shm->stacja_otwarta) {
                 resp.sukces = 0;
+                resp.brak_srodkow = 0;
                 msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0);
                 log_print(KOLOR_KASA, tag, "Odmowa - stacja zamknieta dla PAS %d", req.id_pasazera);
+                continue;
+            }
+            
+            //1% szans na odmowe sprzedazy z powodu braku srodkow pasazera
+            if (losuj(1, 100) <= 2) {
+                resp.sukces = 0;
+                resp.brak_srodkow = 1;
+                msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0);
+                log_print(KOLOR_KASA, tag, "Odmowa sprzedazy PAS %d - BRAK SRODKOW", req.id_pasazera);
                 continue;
             }
             

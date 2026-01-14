@@ -153,7 +153,16 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                         semop(sem_id, &shm_unlock, 1);
                         return 0;
                     } else {
-                        //odmowa zapamietaj i czekaj na nastepny
+                        //odmowa - sprawdz czy to z powodu braku biletu
+                        if (!ma_bilet) {
+                            //bez biletu - kierowca odrzucil, opuszczam dworzec
+                            log_print(KOLOR_PAS, tag, "Odrzucony przez kierowce (brak biletu) - opuszczam dworzec. PID=%d", getpid());
+                            semop(sem_id, &shm_lock, 1);
+                            shm->pasazerow_czeka -= ile_osob;
+                            semop(sem_id, &shm_unlock, 1);
+                            return -1;
+                        }
+                        //odmowa z powodu braku miejsc - czekaj na nastepny
                         bus_ktory_odmowil = aktualny_bus;
                         log_print(KOLOR_PAS, tag, "Brak miejsc - czekam na nastepny autobus PID=%d", getpid());
                     }
@@ -202,8 +211,14 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
             perror("pasazer msgrcv kasa");
             return 0;
         }
-        if (resp.sukces == 0) {//stacja zamknieta
-            return 0;
+        if (resp.sukces == 0) {
+            if (resp.brak_srodkow) {
+                //odmowa z powodu braku srodkow - pasazer idzie bez biletu
+                log_print(KOLOR_PAS, tag, "BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=%d", getpid());
+                return 0;  //zwraca 0 = brak biletu
+            }
+            //stacja zamknieta
+            return -1;  //zwraca -1 = opusc dworzec
         }
         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
                   ile_biletow, resp.numer_kasy, getpid());
@@ -252,6 +267,17 @@ void proces_pasazer(int id_pas) {
               wiek, czy_rower ? ", rower" : "", czy_vip ? " VIP" : "", getpid());
 
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 1);
+    
+    //ma_bilet: 1=kupiony, 0=brak srodkow (idz bez biletu), -1=stacja zamknieta
+    if (ma_bilet == -1) {
+        log_print(KOLOR_PAS, tag, "Stacja zamknieta - opuszczam dworzec. PID=%d", getpid());
+        semop(sem_id, &shm_lock, 1);
+        shm->pasazerow_czeka--;
+        semop(sem_id, &shm_unlock, 1);
+        shmdt(shm);
+        exit(0);
+    }
+    
     czekaj_na_autobus(shm, tag, id_pas, wiek, czy_rower, czy_vip, ma_bilet, 0, 0, 1);
 
     shmdt(shm);
@@ -317,6 +343,28 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
 
     //kupno 2 biletow i oczekiwanie na autobus
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 2);
+    
+    //ma_bilet: 1=kupiony, 0=brak srodkow (idz bez biletu), -1=stacja zamknieta
+    if (ma_bilet == -1) {
+        log_print(KOLOR_PAS, tag, "Stacja zamknieta - opiekun + dziecko opuszczaja dworzec. PID=%d", getpid());
+        semop(sem_id, &shm_lock, 1);
+        shm->pasazerow_czeka -= 2;
+        semop(sem_id, &shm_unlock, 1);
+        
+        //zakonczenie watku dziecka
+        if (watek_utworzony) {
+            pthread_mutex_lock(&mutex);
+            zakoncz = 1;
+            pthread_cond_signal(&cond);
+            pthread_mutex_unlock(&mutex);
+            pthread_join(tid_dziecko, NULL);
+        }
+        pthread_mutex_destroy(&mutex);
+        pthread_cond_destroy(&cond);
+        shmdt(shm);
+        exit(0);
+    }
+    
     int wynik = czekaj_na_autobus(shm, tag, id_pas, wiek, 0, czy_vip, ma_bilet, 
                                    id_dziecka, wiek_dziecka, 2);
 
