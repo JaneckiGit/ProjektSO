@@ -45,29 +45,30 @@ void proces_kasa(int numer_kasy) {
     log_print(KOLOR_KASA, tag, "Otwarta. PID=%d", getpid());
 
     //glowna petla  odbiera wiadomosci od pasazerow
-    while (kasa_running && shm->symulacja_aktywna) {
+    while (kasa_running && shm->symulacja_aktywna && shm->stacja_otwarta) {
         KasaRequest req;
         
         //IPC_NOWAIT-nie blokuj jeśli brak wiadomosci
         ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
                              numer_kasy, IPC_NOWAIT);
         if (ret != -1) {
+            //jesli stacja zamknieta to zakoncz petle
+            if (!shm->stacja_otwarta) {
+                break;
+            }
+            
             log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)", 
                       req.id_pasazera, req.wiek, req.ile_biletow);
             //symulacja czasu obslugi
-            msleep(losuj(200, 500));
+            msleep(losuj(100, 200));
             
             KasaResponse resp;
             resp.mtype = req.pid_pasazera;
             resp.numer_kasy = numer_kasy;
             
-            //sprawdz czy stacja otwarta - jesli nie, odmow sprzedazy
+            //jesli stacja zamknieta w trakcie obslugi to nie sprzedawaj
             if (!shm->stacja_otwarta) {
-                resp.sukces = 0;
-                resp.brak_srodkow = 0;
-                msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0);
-                log_print(KOLOR_KASA, tag, "Odmowa - stacja zamknieta dla PAS %d", req.id_pasazera);
-                continue;
+                break;
             }
             
             //1% szans na odmowe sprzedazy z powodu braku srodkow pasazera
@@ -97,7 +98,7 @@ void proces_kasa(int numer_kasy) {
             
             obsluzonych++;
         } else {
-            usleep(50000);  
+            usleep(500);  
         }
     }
     log_print(KOLOR_KASA, tag, "Zamknieta. Obsluzono: %d. PID=%d", obsluzonych, getpid());

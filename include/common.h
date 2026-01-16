@@ -69,15 +69,14 @@ typedef struct {
     int vip_count;
     int total_przewiezionych;
     int odrzuconych_bez_biletu;
-    int rodzicow_z_dziecmi;  //liczba rodzicow z dziecmi
+    int rodzicow_z_dziecmi;  //liczba par rodzic+dziecko
+    int opuscilo_bez_jazdy;  //pasazerowie ktorzy wyszli bez wsiadania do autobusu
     int obsluzonych_kasa[MAX_KASY];
     //Rejestracja pasazerow (do sprawdzania biletow)
     pid_t registered_pids[MAX_REGISTERED]; 
     int registered_wiek[MAX_REGISTERED];
     int registered_count;
     //Pasazerowie ktorzy juz wsiedli (ochrona przed podwojnym wsiadaniem)
-    pid_t wsiedli[MAX_REGISTERED];
-    int wsiedli_count;
 } SharedData;
 
 //wiadomość - bilet
@@ -114,10 +113,9 @@ typedef struct {
 //wiadomosc (autobus -> pasazer) (czy wsiadl czy odmowa)
 typedef struct {
     long mtype;              // = PID pasazera (do odbioru odpowiedzi)
-    int przyjety;            // 1 = wsiadl, 0 = odmowa (brak miejsc)
+    int przyjety;            // 1 = wsiadl, 0 = odmowa
 } OdpowiedzMsg;
 
-//Dane dla wątku dziecka
 //dane dla wątku dziecka (używane w pasazer.c)
 //Struktura przekazywana do pthread_create() gdy rodzic tworzy wątek dziecka
 typedef struct {
