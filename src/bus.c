@@ -94,13 +94,20 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             goto koniec;
         }
         //blokujace zajecie peronu autobus przejdzie
-        if (semop(sem_id, &zajmij_peron, 1) == -1) {
+        //Petla retry dla EINTR (np. po Ctrl+Z/fg)
+        while (semop(sem_id, &zajmij_peron, 1) == -1) {
             if (errno == EINTR) {
-                log_print(KOLOR_BUS, tag, "Stacja zamknieta - koncze. PID=%d", getpid());
+                //Sprawdz czy to nie byl sygnal zakonczenia
+                if (!bus_running || !shm->stacja_otwarta) {
+                    log_print(KOLOR_BUS, tag, "Stacja zamknieta - koncze. PID=%d", getpid());
+                    goto koniec;
+                }
+                //Inaczej ponow probe (np. po Ctrl+Z/fg)
+                continue;
             } else {
                 perror("bus semop zajmij_peron");
+                goto koniec;
             }
-            goto koniec;
         }
         mam_peron = 1;  //zajalem peron
         

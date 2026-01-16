@@ -72,7 +72,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
         if (jest_bus && aktualny_bus > 0) {
             
             if (aktualny_bus == bus_ktory_odmowil) {
-                usleep(100000);  //100ms
+                usleep(500);
                 continue;
             }
             //proba zajecia drzwi i komunikacji z autobusem
@@ -93,22 +93,15 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                             //wyslij bilet
                             if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
                                              id_dziecka, wiek_dziecka) == 0) {
-                                //czekaj na odpowiedz z timeoutem (max 5s)
+                                //czekaj na odpowiedz - BLOKUJACE
                                 OdpowiedzMsg odp;
-                                int timeout_odp = 0;
-                                while (shm->symulacja_aktywna && shm->stacja_otwarta && timeout_odp < 100) {
-                                    if (msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
-                                               getpid(), IPC_NOWAIT) != -1) {
-                                        if (odp.przyjety == 1) {
-                                            wynik_wsiadania = 1;
-                                        } 
-                                        else {
-                                            wynik_wsiadania = 0;
-                                        }
-                                        break;
+                                if (msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
+                                           getpid(), 0) != -1) {
+                                    if (odp.przyjety == 1) {
+                                        wynik_wsiadania = 1;
+                                    } else {
+                                        wynik_wsiadania = 0;
                                     }
-                                    usleep(50000); 
-                                    timeout_odp++;
                                 }
                             }
                         }
@@ -129,21 +122,15 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                         //wyslij bilet
                         if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
                                          id_dziecka, wiek_dziecka) == 0) {
-                            //czekaj na odpowiedz z timeoutem (max 5s)
+                            //czekaj na odpowiedz - BLOKUJACE
                             OdpowiedzMsg odp;
-                            int timeout_odp = 0;
-                            while (shm->symulacja_aktywna && shm->stacja_otwarta && timeout_odp < 100) {
-                                if (msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
-                                           getpid(), IPC_NOWAIT) != -1) {
-                                    if (odp.przyjety == 1) {
-                                        wynik_wsiadania = 1;
-                                    } else {
-                                        wynik_wsiadania = 0;
-                                    }
-                                    break;
+                            if (msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 
+                                       getpid(), 0) != -1) {
+                                if (odp.przyjety == 1) {
+                                    wynik_wsiadania = 1;
+                                } else {
+                                    wynik_wsiadania = 0;
                                 }
-                                usleep(50000); 
-                                timeout_odp++;
                             }
                         }
                     }
@@ -170,13 +157,13 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 bus_ktory_odmowil = aktualny_bus;
                 log_print(KOLOR_PAS, tag, "Brak miejsc - czekam na nastepny autobus PID=%d", getpid());
             }
-            usleep(1000);
+            usleep(500);
             if (!shm->symulacja_aktywna || !shm->stacja_otwarta) {
                 break;
             }
         }else {
             bus_ktory_odmowil = 0;
-            usleep(50000);  //50ms - szybsza reakcja na zamkniecie
+            usleep(500);
         }
     }
     //Wyjscie z petli
@@ -450,7 +437,6 @@ void proces_generator(void) {
             exit(1);
         }
         id_pas++;
-        //msleep(100);
         msleep(losuj(800, 2000));
     }
     exit(0);
