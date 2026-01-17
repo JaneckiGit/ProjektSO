@@ -26,7 +26,7 @@ static void handler_dyspozytor(int sig) {
         flaga_sigusr1 = 1;
     } else if (sig == SIGUSR2) {//SIGUSR2 = zamknięcie dworca(graceful shutdown)
         flaga_sigusr2 = 1;
-    } else if (sig == SIGINT || sig == SIGTERM) {//SIGINT/SIGTERM = natychmiastowe zakonczenie
+    } else if (sig == SIGINT || sig == SIGTERM || sig == SIGQUIT) {//SIGINT/SIGTERM/SIGQUIT = natychmiastowe zakonczenie
         flaga_stop = 1;
     }
 }
@@ -75,14 +75,26 @@ static void shutdown_children(void) {
         }
     }
     //czekaj na zakonczenie wszystkich procesow potomnych 
-    while (wait(NULL) > 0);
+    time_t start = time(NULL);
+    while (time(NULL) - start < 2) {
+        if (waitpid(-1, NULL, WNOHANG) <= 0) break;
+    }
+    //Jesli nadal dzialaja wymus SIGKILL
+    if (pid_generator > 0) kill(pid_generator, SIGKILL);
+    for (int i = 0; i < ile_kas; i++) {
+        if (pids_kasy[i] > 0) kill(pids_kasy[i], SIGKILL);
+    }
+    for (int i = 0; i < ile_busow; i++) {
+        if (pids_busy[i] > 0) kill(pids_busy[i], SIGKILL);
+    }
+    //ostateczne czekanie
+    while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 //zapisz raport koncowy do pliku
 static void zapisz_raport_koncowy(SharedData *shm) {
     int fd = open("raport.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
     if(fd == -1) return;
     char buf[2048];
-    
     int len = snprintf(buf, sizeof(buf),
         "\n========================================\n"
         "       RAPORT KONCOWY SYMULACJI\n"
@@ -114,7 +126,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     //Automatyczne zbieranie zombie przez kernel
     signal(SIGCHLD, SIG_IGN);
     srand(time(NULL) ^ getpid());
-    
+
     //Konfiguracja sygnalow
     struct sigaction sa;
     memset(&sa, 0,sizeof(sa));
@@ -126,6 +138,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     sigaction(SIGUSR2, &sa, NULL);
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGQUIT, &sa, NULL); 
     
     //Handler SIGCHLD automatyczne zbieranie zombie
     struct sigaction sa_chld;
@@ -157,7 +170,6 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         exit(1);
     }
     init_semafory();
-
     //inicjalizacja pamieci dzielonej shmat() shmdt()
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
     if (shm == (void *)-1) {
@@ -240,7 +252,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             flaga_sigusr1 = 0;
             SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
             if (s != (void *)-1) {
-                if (s->aktualny_bus_pid > 0) {
+                //Sprawdz OBYDWA warunki: bus_na_peronie ORAZ aktualny_bus_pid
+                if (s->bus_na_peronie && s->aktualny_bus_pid > 0) {
                     log_print(KOLOR_DYSP, "DYSP", 
                               ">>> SIGUSR1: Wymuszam odjazd BUS PID=%d <<<", 
                               s->aktualny_bus_pid);
@@ -266,6 +279,12 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             if (pid_generator > 0) {
                 kill(pid_generator, SIGTERM);
             }
+            //zatrzymaj kasy
+            for (int i = 0; i < ile_kas; i++) {
+                if (pids_kasy[i] > 0) {
+                    kill(pids_kasy[i], SIGTERM);
+                }
+            }
             log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety. Czekam na zakonczenie przejazdow");
         }
         //sprawdzenie czy symulacja powinna sie zakonczyc
@@ -274,7 +293,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             //koniec gdy stacja zamknieta i WSZYSCY pasazerowie obsluzeni
             //pasazerow_w_trasie = w autobusach jadacych
             //pasazerow_czeka = na dworcu czekajacych na autobus
-            if (!s->stacja_otwarta && s->pasazerow_w_trasie <= 0) {
+            if (!s->stacja_otwarta && s->pasazerow_w_trasie <= 0 && s->pasazerow_czeka <= 0) {
                 log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety, wszyscy rozwiezieni - koncze.");
                 s->symulacja_aktywna = false;
                 shmdt(s);
@@ -283,23 +302,30 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             shmdt(s);
         }
         waitpid(-1, NULL, WNOHANG);//Sprzatanie procesow zombie
-        usleep(200000);  
+        //usleep(200000);  
     }
     //ZAKONCZENIE
     if (flaga_stop) {
-        // SIGTERM - NATYCHMIASTOWE zakonczenie
         log_print(KOLOR_DYSP, "DYSP", ">>> NATYCHMIASTOWE ZAKONCZENIE! <<<");
-        
-        //Ustaw flagi - pasazerowie zobacza i wypisza komunikat
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s != (void *)-1) {
             int pasazerow_na_dworcu = s->pasazerow_czeka;
+            int pasazerow_w_trasie = s->pasazerow_w_trasie;
             s->symulacja_aktywna = false;
             s->stacja_otwarta = false;
+            //pasazerowie na dworcu
+            s->opuscilo_bez_jazdy += pasazerow_na_dworcu;
+            s->pasazerow_czeka = 0;
+            //Pasazerowie w trasie dodani do "przewiezionych" 
+            s->total_przewiezionych += pasazerow_w_trasie;
+            s->pasazerow_w_trasie = 0;
             shmdt(s);
             log_print(KOLOR_DYSP, "DYSP", "Pasazerow na dworcu: %d", pasazerow_na_dworcu);
+            if (pasazerow_w_trasie > 0) {
+                log_print(KOLOR_DYSP, "DYSP", "Pasazerow w trasie: %d", pasazerow_w_trasie);
+            }
         }
-        usleep(200);
+        //usleep(200);
         //NATYCHMIAST zabij wszystkie procesy potomne
         shutdown_children();
     } else {
@@ -312,14 +338,17 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             shmdt(s);
         }
         log_print(KOLOR_DYSP, "DYSP", "Czekam na zakonczenie procesow");
-        usleep(500000);
+        {
+            time_t wait_start = time(NULL);
+            while (time(NULL) < wait_start +1) {
+                waitpid(-1, NULL, WNOHANG);
+            }
+        }
         shutdown_children();
     }
-
     //Podsumowanie
     SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
     if (s != (void *)-1) {
-
         log_print(KOLOR_STAT, "STAT", "========================================");
         log_print(KOLOR_STAT, "STAT", "PODSUMOWANIE");
         log_print(KOLOR_STAT, "STAT", "========================================");

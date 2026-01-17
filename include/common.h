@@ -135,8 +135,9 @@ extern int msg_kasa_id; //id kolejki wiadomości dla kas (pasażer<->kasa)
 //funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);//Logi z kolorami i tagami
 int losuj(int min, int max);//Losowa liczba z zakresu [min, max]
-void msleep(int ms);//Uspienie na ms milisekund
 void get_timestamp(char* buf, size_t size);//Pobranie aktualnego timestampu
 int init_ipc_client(void);  //dla procesow potomnych
+void handle_error(const char* msg);
+void handle_error_cleanup(const char* msg, void (*cleanup_func)(void));
 
 #endif

@@ -109,7 +109,7 @@ test7() {
 test8() {
     echo "=== TEST 8: Pasażer bez biletu jest wypraszany ==="
     cleanup
-    timeout 60s $BIN 2 10 3 8000 1
+    timeout 90s $BIN 2 10 3 8000 1
     if grep -q "Odrzucony przez kierowce (brak biletu)" raport.txt; then
         echo "[PASS] Pasażer bez biletu został wyproszony przez kierowcę"
     else
