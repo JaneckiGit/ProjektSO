@@ -42,7 +42,7 @@ void proces_kasa(int numer_kasy) {
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
 
     int obsluzonych = 0;//liczba obsluzonych pasazerow
-    time_t obsluga_start, obsluga_koniec;  //do mierzenia czasu obslugi
+    //time_t obsluga_start, obsluga_koniec;  //do mierzenia czasu obslugi
     log_print(KOLOR_KASA, tag, "Otwarta. PID=%d", getpid());
 
     //glowna petla  odbiera wiadomosci od pasazerow
@@ -64,12 +64,11 @@ void proces_kasa(int numer_kasy) {
             }
             log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)",
                       req.id_pasazera, req.wiek, req.ile_biletow);
-            //symulacja czasu obslugi
-            obsluga_start = time(NULL);
-            obsluga_koniec = obsluga_start + 1; 
-            while (time(NULL) < obsluga_koniec && kasa_running && shm->dworzec_otwarty) {
-            //busy-wait
-            }
+            // //symulacja czasu obslugi 
+            // obsluga_start = time(NULL);
+            // obsluga_koniec = obsluga_start + 1;  
+            // while (time(NULL) < obsluga_koniec && kasa_running && shm->dworzec_otwarty) {
+            // }
             KasaResponse resp;
             resp.mtype = req.pid_pasazera;
             resp.numer_kasy = numer_kasy;
@@ -100,7 +99,7 @@ void proces_kasa(int numer_kasy) {
                       req.ile_biletow, req.id_pasazera);
             obsluzonych++;
         } else {
-            //usleep(500);  
+            usleep(500);  
         }
     }//Przed zamknieciem - odrzuc wszystkich czekajacych w kolejce
     {

@@ -40,7 +40,23 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
     bilet.id_dziecka = id_dziecka;
     bilet.wiek_dziecka = wiek_dziecka;
 
-    return msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), 0);
+    //nieblokujace wysylanie z retry przy przepelnieniu kolejki
+    int retry = 0;
+    while (retry < 30) {  
+        if (msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), IPC_NOWAIT) == 0) {
+            return 0; 
+        }if (errno == EAGAIN) {
+            usleep(100000);
+            retry++;
+            if (!shm->bus_na_przystanku || !shm->symulacja_aktywna) {
+                return -1;
+            }
+        } else if (errno == EINTR) {
+            continue;
+        } else {
+            return -1; 
+        }
+    }return -1; 
 }
 //glowna petla oczekiwania na autobus
 //pasazer trzyma semafor drzwi az do otrzymania odpowiedzi zapobiega duplikatom
