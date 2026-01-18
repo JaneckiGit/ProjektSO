@@ -29,7 +29,6 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
                         int ma_bilet, int id_dziecka, int wiek_dziecka) {
     BiletMsg bilet;
     memset(&bilet, 0, sizeof(bilet));
-    
     bilet.mtype = czy_vip ? shm->aktualny_bus_pid : (shm->aktualny_bus_pid + 1000000);
     bilet.pid_pasazera = getpid();
     bilet.id_pasazera = id_pas;
@@ -39,7 +38,6 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
     bilet.ma_bilet = ma_bilet;
     bilet.id_dziecka = id_dziecka;
     bilet.wiek_dziecka = wiek_dziecka;
-
     //nieblokujace wysylanie z retry przy przepelnieniu kolejki
     int retry = 0;
     while (retry < 30) {  
@@ -49,8 +47,7 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
             usleep(100000);
             retry++;
             if (!shm->bus_na_przystanku || !shm->symulacja_aktywna) {
-                return -1;
-            }
+                return -1;}
         } else if (errno == EINTR) {
             continue;
         } else {
@@ -66,17 +63,17 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                               int ile_osob) {
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
-    
     //wyczysc stare odpowiedzi z kolejki
     {
-        OdpowiedzMsg stara;
-        while (msgrcv(msg_id, &stara, sizeof(OdpowiedzMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1);
+        OdpowiedzMsg old;
+        while (msgrcv(msg_id, &old, sizeof(OdpowiedzMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1);
     }
     pid_t ostatni_odrzucajacy_bus = 0;//PID autobusu ktory nas odrzucil
     
     while (shm->symulacja_aktywna && shm->dworzec_otwarty) {
         //czekaj az autobus bedzie na przystanku
         if (!shm->bus_na_przystanku || shm->aktualny_bus_pid <= 0) {
+            //usleep(1000);
             continue;
         }
         pid_t bus_pid = shm->aktualny_bus_pid;
@@ -134,7 +131,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 shmdt(shm);
                 exit(0);
             } else {
-
                 //ODMOWA
                 if (!ma_bilet) {
                     log_print(KOLOR_PAS, tag, "Odrzucony (brak biletu) - opuszczam dworzec. PID=%d", getpid());
@@ -201,7 +197,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             }
         }
     }
-    //Stacja zamknieta lub symulacja zakonczona
+    //Dworzec zamknięty lub symulacja zakończona
     log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam. PID=%d", getpid());
     while (semop(sem_id, &shm_lock, 1) == -1 && errno == EINTR);
     shm->pasazerow_czeka -= ile_osob;
@@ -264,8 +260,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
                 //odmowa z powodu braku srodkow - pasazer idzie bez biletu
                 log_print(KOLOR_PAS, tag, "BRAK SRODKOW - nie kupil biletu, idzie na dworzec. PID=%d", getpid());
                 return 0;//zwraca 0 = brak biletu
-            }
-            //dworzec zamkniety
+            }//dworzec zamkniety
             return -1;  //zwraca -1 opusc dworzec
         }
         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
@@ -385,7 +380,6 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
     shm->total_pasazerow += 2;
     shm->pasazerow_czeka += 2;
     shm->rodzicow_z_dziecmi++;
-    if (czy_vip) shm->vip_count++;
     while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
     //sprawdz ponownie przed wejsciem
     if (!shm->dworzec_otwarty) {

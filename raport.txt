@@ -1,2 +1,4 @@
 [11:19:11] [BUS 4 ] Czeka na wjazd na przystanek. PID=83105
 [11:19:11] [BUS 4 ] [Kurs #32] Na przystanku. PID=83105, Miejsca: 0/10, Rowery: 0/3
+[20:23:19] [BUS 1 ] Miejsce docelowe - pasazerowie wysiedli (4). PID=43550
+[20:23:19] [BUS 1 ] Wraca na dworzec (8870ms). PID=43550

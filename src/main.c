@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     int P = 10;//Pojemnosc
     int R = 3;//Rowery
     int T = 5000;//Postoj w milisekundach
-    int K = 2;//Liczba kas
+    int K = 3;//Liczba kas
 
     //parsowanie argumentow
     if (argc > 1) N = atoi(argv[1]);
