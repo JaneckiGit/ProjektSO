@@ -53,14 +53,14 @@ typedef struct {
     int param_T;
     int param_K;
     //Flagi stanu
-    bool stacja_otwarta; //false = dworzec zamkniety (SIGUSR2)
+    bool dworzec_otwarty; //false = dworzec zamkniety (SIGUSR2)
     bool symulacja_aktywna;// false = koniec symulacji
     //Stan autobusu na peronie
     pid_t aktualny_bus_pid;
     int aktualny_bus_id;
     int miejsca_zajete;
     int rowery_zajete;
-    bool bus_na_peronie;
+    bool bus_na_przystanku;
     //Statystyki
     int total_pasazerow;
     int pasazerow_w_trasie;
@@ -69,14 +69,14 @@ typedef struct {
     int vip_count;
     int total_przewiezionych;
     int odrzuconych_bez_biletu;
+    int rodzicow_z_dziecmi;  //liczba par rodzic+dziecko
+    int opuscilo_bez_jazdy;  //pasazerowie ktorzy wyszli bez wsiadania do autobusu
     int obsluzonych_kasa[MAX_KASY];
     //Rejestracja pasazerow (do sprawdzania biletow)
     pid_t registered_pids[MAX_REGISTERED]; 
     int registered_wiek[MAX_REGISTERED];
     int registered_count;
     //Pasazerowie ktorzy juz wsiedli (ochrona przed podwojnym wsiadaniem)
-    pid_t wsiedli[MAX_REGISTERED];
-    int wsiedli_count;
 } SharedData;
 
 //wiadomość - bilet
@@ -106,16 +106,16 @@ typedef struct {
 typedef struct {
     long mtype;              // = PID pasazera
     int numer_kasy;          // Ktora kasa obsluzyla
-    int sukces;              // 1 = bilet kupiony
+    int sukces;              // 1 = bilet kupiony, 0 = odmowa
+    int brak_srodkow;        // 1 = odmowa z powodu braku srodkow
 } KasaResponse;
 
 //wiadomosc (autobus -> pasazer) (czy wsiadl czy odmowa)
 typedef struct {
     long mtype;              // = PID pasazera (do odbioru odpowiedzi)
-    int przyjety;            // 1 = wsiadl, 0 = odmowa (brak miejsc)
+    int przyjety;            // 1 = wsiadl, 0 = odmowa
 } OdpowiedzMsg;
 
-//Dane dla wątku dziecka
 //dane dla wątku dziecka (używane w pasazer.c)
 //Struktura przekazywana do pthread_create() gdy rodzic tworzy wątek dziecka
 typedef struct {
@@ -129,15 +129,15 @@ typedef struct {
 //zmienne IPC
 extern int sem_id; //id semaforów
 extern int shm_id; //id pamięci dzielonej
-extern int msg_id; //id kolejki wiadomości dla autobusów
-extern int msg_kasa_id; //id kolejki wiadomości dla kas
-extern int msg_odp_id; //id kolejk odpowiedzi autobus -> pasażer
+extern int msg_id; //id kolejki wiadomości dla autobusów (pasażer<->autobus)
+extern int msg_kasa_id; //id kolejki wiadomości dla kas (pasażer<->kasa)
 
 //funkcje pomocnicze
 void log_print(const char* kolor, const char* tag, const char* fmt, ...);//Logi z kolorami i tagami
 int losuj(int min, int max);//Losowa liczba z zakresu [min, max]
-void msleep(int ms);//Uspienie na ms milisekund
 void get_timestamp(char* buf, size_t size);//Pobranie aktualnego timestampu
 int init_ipc_client(void);  //dla procesow potomnych
+void handle_error(const char* msg);
+void handle_error_cleanup(const char* msg, void (*cleanup_func)(void));
 
 #endif

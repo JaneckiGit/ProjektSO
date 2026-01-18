@@ -1,0 +1,2 @@
+[11:19:11] [BUS 4 ] Czeka na wjazd na przystanek. PID=83105
+[11:19:11] [BUS 4 ] [Kurs #32] Na przystanku. PID=83105, Miejsca: 0/10, Rowery: 0/3

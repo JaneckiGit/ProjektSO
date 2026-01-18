@@ -10,7 +10,6 @@ int sem_id = -1;
 int shm_id = -1;
 int msg_id = -1;
 int msg_kasa_id = -1;
-int msg_odp_id = -1;  //Kolejka odpowiedzi autobus -> pasazer
 
 //get_timestamp - Timestamp w formacie HH:MM:SS
 void get_timestamp(char* buf, size_t size) {
@@ -22,11 +21,14 @@ void get_timestamp(char* buf, size_t size) {
 }
 //log_print - Logowanie na ekran kolory i do pliku, WYMAGANIA: open(), write(), close(), semop()
 void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
-    struct sembuf lock = {SEM_LOG, -1, SEM_UNDO};
+    struct sembuf lock = {SEM_LOG, -1, IPC_NOWAIT | SEM_UNDO};
     struct sembuf unlock = {SEM_LOG, 1, SEM_UNDO};  
-    //sekcja krytyczna 
+    int mam_lock = 0;
+    //sekcja krytyczna - nieblokujaca
     if (sem_id != -1) {
-        semop(sem_id, &lock, 1);
+        if (semop(sem_id, &lock, 1) == 0) {
+            mam_lock = 1;
+        }
     }
     //Timestamp 
     char time_buf[16];
@@ -58,19 +60,15 @@ void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
         write(fd, file_line, flen);
         close(fd);
     }
-    //zwolnienie 
-    if (sem_id != -1) {
+    //zwolnienie - tylko jesli mamy lock
+    if (mam_lock && sem_id != -1) {
         semop(sem_id, &unlock, 1);
     }
 }
-//losuj losowa liczba z zakresu [min, max]
+//losuj losowa liczba z zakresu min, max
 int losuj(int min, int max) {
     if (max <= min) return min;
     return min + rand() % (max - min + 1);
-}
-//msleep uspienie na ms milisekund
-void msleep(int ms) {
-    usleep(ms * 1000);
 }
 //Inicjalizacja IPC dla procesow potomnych (bus, kasa, pasazer)
 //łaczy się do ISTNIEJĄCYCH zasobów (bez IPC_CREAT)
@@ -81,9 +79,8 @@ int init_ipc_client(void) {
     key_t key_shm = ftok(".", 'M');
     key_t key_msg = ftok(".", 'Q');
     key_t key_msg_kasa = ftok(".", 'K');
-    key_t key_msg_odp = ftok(".", 'O');  //kolejka odpowiedzi
     
-    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1 || key_msg_odp == -1) { 
+    if (key_sem == -1 || key_shm == -1 || key_msg == -1 || key_msg_kasa == -1) { 
         perror("ftok"); 
         return -1; 
     }
@@ -92,11 +89,26 @@ int init_ipc_client(void) {
     shm_id = shmget(key_shm, 0, 0600);
     msg_id = msgget(key_msg, 0600);
     msg_kasa_id = msgget(key_msg_kasa, 0600);
-    msg_odp_id = msgget(key_msg_odp, 0600);
-    
-    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1 || msg_odp_id == -1) { 
+    if (sem_id == -1 || shm_id == -1 || msg_id == -1 || msg_kasa_id == -1) { 
         perror("IPC get"); 
         return -1; 
     }
     return 0;
+}
+//Wyswietla komunikat bledu z errno i konczy program
+void handle_error(const char* msg) {
+    char error_buf[256];
+    snprintf(error_buf, sizeof(error_buf), "[BLAD] %s", msg);
+    perror(error_buf);
+    exit(EXIT_FAILURE);
+}
+//Wersja z funkcja czyszczaca
+void handle_error_cleanup(const char* msg, void (*cleanup_func)(void)) {
+    char error_buf[256];
+    snprintf(error_buf, sizeof(error_buf), "[BLAD] %s", msg);
+    perror(error_buf);
+    if (cleanup_func) {
+        cleanup_func();
+    }
+    exit(EXIT_FAILURE);
 }

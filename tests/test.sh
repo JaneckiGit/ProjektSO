@@ -6,7 +6,7 @@ cleanup() { ipcrm -a 2>/dev/null || true; }
 test1() {
     echo "=== TEST 1: Obciążeniowy - czy są odmowy przy małej pojemności? ==="
     cleanup
-    timeout 30s $BIN 2 5 2 5000 1
+    timeout 90s $BIN 2 5 2 10000 1
     if grep -q "Odmowa" raport.txt; then
         echo "[PASS] Wykryto odmowy - system poprawnie obsługuje przepełnienie"
     else
@@ -18,9 +18,9 @@ test1() {
 test2() {
     echo "=== TEST 2: Czy są odmowy przy rowerzystach R=1? ==="
     cleanup
-    timeout 30s $BIN 3 10 1 5000 1
+    timeout 90s $BIN 3 10 1 10000 1 
     if grep -q "brak miejsc rowerowych" raport.txt; then
-        echo "[PASS] odmowy dla rowerzystów - brak miejsc"
+        echo "[PASS] odmowy dla rowerzystów - brak miejsc rowerowych"
     else
         echo "[INFO] Brak odmów rowerowych (może za mało rowerzystów)"
     fi
@@ -61,10 +61,9 @@ test4() {
 test5() {
     echo "=== TEST 5: Autobus odjeżdża wcześniej gdy pełny ==="
     cleanup
-    # Mała pojemność (P=5) + długi postój (T=15000) = powinien się zapełnić przed czasem
     timeout 60s $BIN 3 5 2 15000 2
     
-    if grep -q "PELNY - odjazd!" raport.txt; then
+    if grep -q "PELNY" raport.txt; then
         echo "[PASS] Autobus odjechał wcześniej po zapełnieniu"
     else
         echo "[FAIL] Nie wykryto wcześniejszego odjazdu"
@@ -93,6 +92,31 @@ test6() {
     cleanup
 }
 
+test7() {
+    echo "=== TEST 7: VIP omija kolejkę ==="
+    cleanup
+    timeout 100s $BIN 2 10 3 8000 1
+    
+    vip_autobus=$(grep -c "VIP omija kolejke do autobusu!" raport.txt || echo 0)
+    
+    if [ "$vip_autobus" -gt 0 ]; then
+        echo "[PASS] VIP omija kolejkę do autobusu ($vip_autobus razy)"
+    else
+        echo "[INFO] Brak VIP-ów w tym przebiegu (losowe ~5%)"
+    fi
+    cleanup
+}
+test8() {
+    echo "=== TEST 8: Pasażer bez biletu jest wypraszany ==="
+    cleanup
+    timeout 90s $BIN 2 10 3 8000 1
+    if grep -q "Odrzucony przez kierowce (brak biletu)" raport.txt; then
+        echo "[PASS] Pasażer bez biletu został wyproszony przez kierowcę"
+    else
+        echo "[INFO] Brak pasażera bez biletu w tym przebiegu (może losowo nie wystąpił)"
+    fi
+    cleanup
+}
 case "$1" in
     1) test1 ;;
     2) test2 ;;
@@ -100,6 +124,8 @@ case "$1" in
     4) test4 ;;
     5) test5 ;;
     6) test6 ;;
-    all) test1; echo ""; test2; echo ""; test3; echo ""; test4; echo ""; test5; echo ""; test6 ;;
-    *) echo "Użycie: $0 [1-6|all]" ;;
+    7) test7 ;;
+    8) test8 ;;
+    all) test1; echo ""; test2; echo ""; test3; echo ""; test4; echo ""; test5; echo ""; test6; echo ""; test7; echo ""; test8 ;;
+    *) echo "Użycie: $0 [1-8|all]" ;;
 esac

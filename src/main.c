@@ -6,11 +6,11 @@
 
 int main(int argc, char *argv[]) {
     //Domyslne parametry symulacji
-    int N = 5;     //Liczba autobusow
-    int P = 10;    //Pojemnosc
-    int R = 3;     //Rowery
-    int T = 5000;  //Postoj w milisekundach
-    int K = 1; //Liczba kas
+    int N = 5;//Liczba autobusow
+    int P = 10;//Pojemnosc
+    int R = 3;//Rowery
+    int T = 5000;//Postoj w milisekundach
+    int K = 2;//Liczba kas
 
     //parsowanie argumentow
     if (argc > 1) N = atoi(argv[1]);
