@@ -304,7 +304,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         while (msgrcv(msg_id, &stary, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
             odmowa.mtype = stary.pid_pasazera;
             msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
-        }//Wyczysc kolejke z biletow skierowanych do tego autobusu (zostaly nieobsluzone)
+        }//Wyczysc kolejke z biletow skierowanych do tego autobusu
         {
             BiletMsg stary;
             while (msgrcv(msg_id, &stary, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1);

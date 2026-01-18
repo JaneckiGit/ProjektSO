@@ -90,12 +90,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 semop(sem_id, &wyjdz_r, 1);
                 continue;
             }
-            //Mam oba semafory - sprawdz czy autobus nadal tu jest
-            if (!shm->bus_na_przystanku || shm->aktualny_bus_pid != bus_pid) {
-                semop(sem_id, &wyjdz_n, 1);
-                semop(sem_id, &wyjdz_r, 1);
-                continue;
-            }
             if (czy_vip) {
                 log_print(KOLOR_PAS, tag, "VIP z rowerem - priorytet! PID=%d", getpid());
             }
@@ -146,11 +140,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             //Zajmij semafor (blokujaco)
             while (semop(sem_id, &wejdz, 1) == -1 && errno == EINTR);
             //sprawdz czy autobus nie odjechal podczas czekania
-            if (!shm->bus_na_przystanku || shm->aktualny_bus_pid != bus_pid) {
-                semop(sem_id, &wyjdz, 1);
-                continue;
-            }
-            //sprawdz ponownie
             if (!shm->bus_na_przystanku || shm->aktualny_bus_pid != bus_pid) {
                 semop(sem_id, &wyjdz, 1);
                 continue;
