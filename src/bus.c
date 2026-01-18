@@ -18,7 +18,7 @@ static void handler_bus(int sig) {
 //sprawdza warunki zakonczenia pracy autobusu
 static int czy_zakonczyc(SharedData *shm) {
     if (!shm->symulacja_aktywna) return 1;
-    if (!shm->stacja_otwarta && shm->pasazerow_w_trasie <= 0) return 1;
+    if (!shm->dworzec_otwarty && shm->pasazerow_w_trasie <= 0) return 1;
     return 0;
 }
 //glowna funkcja procesu autobusu
@@ -49,7 +49,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         exit(1);
     }
     //struktury operacji na semaforach
-    struct sembuf zwolnij_peron = {SEM_BUS_STOP, 1, SEM_UNDO};
+    struct sembuf zwolnij_przystanek = {SEM_BUS_STOP, 1, SEM_UNDO};
     struct sembuf odblokuj_drzwi_n = {SEM_DOOR_NORMAL, 1, SEM_UNDO};
     struct sembuf odblokuj_drzwi_r = {SEM_DOOR_ROWER, 1, SEM_UNDO};
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};  
@@ -57,7 +57,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
     int kursow = 0;
     int przewiezionych = 0;
-    int mam_peron = 0;//flaga czy autobus zajal peron
+    int mam_przystanek = 0;//flaga czy autobus zajal przystanek
     time_t czas_start, czas_koniec;//do mierzenia czasu 
 
     log_print(KOLOR_BUS, tag, "Miejsca normalne: %d, Miejsca rowerowe: %d, Ti=%dms. PID=%d", 
@@ -83,20 +83,20 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
             break;
         }
-        //proba zajecia peronu (non-blocking)
+        //proba zajecia przystanku (non-blocking)
         log_print(KOLOR_BUS, tag, "Czeka na wjazd na przystanek. PID=%d", getpid());
-        struct sembuf zajmij_peron = {SEM_BUS_STOP, -1, SEM_UNDO};  //blokujacy!
+        struct sembuf zajmij_przystanek = {SEM_BUS_STOP, -1, SEM_UNDO};  //blokujacy!
         //Sprawdz przed zajmowaniem
-        if (!shm->stacja_otwarta || !bus_running) {
+        if (!shm->dworzec_otwarty || !bus_running) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze. PID=%d", getpid());
             goto koniec;
         }
-        //blokujace zajecie peronu autobus przejdzie
+        //blokujace zajecie przystanku autobus przejdzie
         //Petla retry dla EINTR
-        while (semop(sem_id, &zajmij_peron, 1) == -1) {
+        while (semop(sem_id, &zajmij_przystanek, 1) == -1) {
             if (errno == EINTR) {
                 //Sprawdz czy to nie byl sygnal zakonczenia
-                if (!bus_running || !shm->stacja_otwarta) {
+                if (!bus_running || !shm->dworzec_otwarty) {
                     log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze. PID=%d", getpid());
                     goto koniec;
                 }//ponow probe
@@ -106,16 +106,16 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 goto koniec;
             }
         }
-        mam_peron = 1;//zajalem peron
+        mam_przystanek = 1;//zajalem przystanek
         
-        //Sprawdz PO zajeciu czy stacja nadal otwarta
-        if (!shm->stacja_otwarta || czy_zakonczyc(shm)) {
-            log_print(KOLOR_BUS, tag, "Dworzec zamkniety po zajeciu peronu koncze. PID=%d", getpid());
-            semop(sem_id, &zwolnij_peron, 1);
-            mam_peron = 0;
+        //sprawdz PO zajeciu czy dworzec nadal otwarty
+        if (!shm->dworzec_otwarty || czy_zakonczyc(shm)) {
+            log_print(KOLOR_BUS, tag, "Dworzec zamkniety po zajeciu przystanku koncze. PID=%d", getpid());
+            semop(sem_id, &zwolnij_przystanek, 1);
+            mam_przystanek = 0;
             goto koniec;
         }
-        //autobus zajal peron - aktualizacja stanu
+        //autobus zajal przystanek - aktualizacja stanu
         kursow++;
         wymuszony_odjazd = 0;
 
@@ -125,7 +125,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
         shm->aktualny_bus_pid = getpid();
         shm->aktualny_bus_id = bus_id;
-        shm->bus_na_peronie = true;
+        shm->bus_na_przystanku = true;
         shm->miejsca_zajete = 0;
         shm->rowery_zajete = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
@@ -134,22 +134,22 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                   kursow, getpid(), pojemnosc, rowery);
 
         //postój i przyjmowanie pasażerów
-        int czas_na_stacji = 0;//czas spedzony na stacji
+        int czas_na_przystanku = 0;//czas spedzony na przystanku
         int pasazerow_w_kursie = 0;
 
-        if (!shm->stacja_otwarta) {
+        if (!shm->dworzec_otwarty) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety - nie przyjmuje pasazerow, koncze. PID=%d", getpid());
-            //zwolnij peron i zakoncz nie jedz pustej trasy
+            //zwolnij przystanek i zakoncz nie jedz pustej trasy
             while (semop(sem_id, &shm_lock, 1) == -1) {
                 if (errno == EINTR) continue;
                 break;
             }
-            shm->bus_na_peronie = false;
+            shm->bus_na_przystanku = false;
             shm->aktualny_bus_pid = 0;
             shm->aktualny_bus_id = 0;
             while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
-            semop(sem_id, &zwolnij_peron, 1);
-            mam_peron = 0;
+            semop(sem_id, &zwolnij_przystanek, 1);
+            mam_przystanek = 0;
             break;
         } else {
             //petla przyjmowania pasazerow
@@ -158,7 +158,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             int min_czas = czas_postoju;
             int max_czas = czas_postoju * 2;  //maksymalnie 2x dluzej
             
-            while (czas_na_stacji < min_czas && !wymuszony_odjazd && bus_running && shm->stacja_otwarta) {
+            while (czas_na_przystanku < min_czas && !wymuszony_odjazd && bus_running && shm->dworzec_otwarty) {
                 BiletMsg bilet;
                 //najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
                 ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
@@ -255,9 +255,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         msgsnd(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                     }
                 }
-                czas_na_stacji = (int)((time(NULL) - czas_start) * 1000);
+                czas_na_przystanku = (int)((time(NULL) - czas_start) * 1000);
                 //Przedluz czekanie jesli sa pasazerowie i jest miejsce
-                if (czas_na_stacji >= min_czas && czas_na_stacji < max_czas) {
+                if (czas_na_przystanku >= min_czas && czas_na_przystanku < max_czas) {
                     if (shm->pasazerow_czeka > 0 && shm->miejsca_zajete < pojemnosc) {
                         //Kontynuuj czekanie
                         continue;
@@ -267,18 +267,18 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             if (wymuszony_odjazd) {
                 log_print(KOLOR_BUS, tag, ">>> WYMUSZONY ODJAZD (SIGUSR1)! PID=%d <<<", getpid());
             }//SIGUSR2 w trakcie zbierania jesli brak pasazerow zakoncz bez jazdy
-            if (!shm->stacja_otwarta && pasazerow_w_kursie == 0) {
+            if (!shm->dworzec_otwarty && pasazerow_w_kursie == 0) {
                 log_print(KOLOR_BUS, tag, "Dworzec zamkniety, brak pasazerow - koncze. PID=%d", getpid());
                 while (semop(sem_id, &shm_lock, 1) == -1) {
                     if (errno == EINTR) continue;
                     break;
                 }
-                shm->bus_na_peronie = false;
+                shm->bus_na_przystanku = false;
                 shm->aktualny_bus_pid = 0;
                 shm->aktualny_bus_id = 0;
                 while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
-                semop(sem_id, &zwolnij_peron, 1);
-                mam_peron = 0;
+                semop(sem_id, &zwolnij_przystanek, 1);
+                mam_przystanek = 0;
                 break;
             }
         }//sygnalizacja odjazdu pasazerowie w drzwiach zobacza ze bus odjechal i zwolnia semafor
@@ -286,7 +286,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             if (errno == EINTR) continue;
             break;
         }
-        shm->bus_na_peronie = false;
+        shm->bus_na_przystanku = false;
         shm->aktualny_bus_pid = 0;
         shm->aktualny_bus_id = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
@@ -333,8 +333,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         //zwolnienie peronu i otwarcie drzwi
         semop(sem_id, &odblokuj_drzwi_n, 1);
         semop(sem_id, &odblokuj_drzwi_r, 1);
-        semop(sem_id, &zwolnij_peron, 1);
-        mam_peron = 0;
+        semop(sem_id, &zwolnij_przystanek, 1);
+        mam_przystanek = 0;
         //jazda do miejsca docelowego
         log_print(KOLOR_BUS, tag, "Jedzie do miejsca docelowego (%dms). PID=%d", czas_trasy_Ti, getpid());
         
@@ -357,25 +357,25 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             while (semop(sem_id, &unlock, 1) == -1 && errno == EINTR);
         }
         log_print(KOLOR_BUS, tag, "Miejsce docelowe - pasazerowie wysiedli (%d). PID=%d", pasazerow_w_kursie, getpid());
-        //koniec jesli stacja zamknieta autobus konczy po rozwiezieniu pasazerow
-        if (!shm->stacja_otwarta) {
+        //koniec jesli dworzec zamkniety autobus konczy po rozwiezieniu pasazerow
+        if (!shm->dworzec_otwarty) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze prace po rozwiezieniu pasazerow. PID=%d", getpid());
             break;
         }
     }
 koniec://koniec pracy autobusu
-    //Zwolnij peron jesli autobus go trzyma
-    if (mam_peron) {
+    //Zwolnij przystanek jesli autobus go trzyma
+    if (mam_przystanek) {
         while (semop(sem_id, &shm_lock, 1) == -1) {
             if (errno == EINTR) continue;
             break;
         }
-        shm->bus_na_peronie = false;
+        shm->bus_na_przystanku = false;
         shm->aktualny_bus_pid = 0;
         shm->aktualny_bus_id = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
-        semop(sem_id, &zwolnij_peron, 1);
-        mam_peron = 0;
+        semop(sem_id, &zwolnij_przystanek, 1);
+        mam_przystanek = 0;
     }
     log_print(KOLOR_BUS, tag, "KONIEC. Kursow: %d, Przewiezionych: %d. PID=%d",
               kursow, przewiezionych, getpid());

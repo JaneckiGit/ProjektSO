@@ -183,9 +183,9 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     shm->param_R = R;
     shm->param_T = T;
     shm->param_K = K;
-    shm->stacja_otwarta = true;
+    shm->dworzec_otwarty = true;
     shm->symulacja_aktywna = true;
-    shm->bus_na_peronie = false;
+    shm->bus_na_przystanku = false;
     shm->aktualny_bus_pid = 0;
 
     shmdt(shm);
@@ -252,8 +252,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             flaga_sigusr1 = 0;
             SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
             if (s != (void *)-1) {
-                //Sprawdz OBYDWA warunki: bus_na_peronie ORAZ aktualny_bus_pid
-                if (s->bus_na_peronie && s->aktualny_bus_pid > 0) {
+                //Sprawdz OBYDWA warunki: bus_na_przystanku ORAZ aktualny_bus_pid
+                if (s->bus_na_przystanku && s->aktualny_bus_pid > 0) {
                     log_print(KOLOR_DYSP, "DYSP", 
                               ">>> SIGUSR1: Wymuszam odjazd BUS PID=%d <<<", 
                               s->aktualny_bus_pid);
@@ -272,7 +272,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             
             SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
             if (s != (void *)-1) {
-                s->stacja_otwarta = false;  //nowi pasazerowie nie wchodza na dworzec
+                s->dworzec_otwarty = false;  //nowi pasazerowie nie wchodza na dworzec
                 shmdt(s);
             }
             //zatrzymaj generator
@@ -290,10 +290,10 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         //sprawdzenie czy symulacja powinna sie zakonczyc
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s != (void *)-1) {
-            //koniec gdy stacja zamknieta i WSZYSCY pasazerowie obsluzeni
+            //koniec gdy dworzec zamkniet i WSZYSCY pasazerowie obsluzeni
             //pasazerow_w_trasie = w autobusach jadacych
             //pasazerow_czeka = na dworcu czekajacych na autobus
-            if (!s->stacja_otwarta && s->pasazerow_w_trasie <= 0 && s->pasazerow_czeka <= 0) {
+            if (!s->dworzec_otwarty && s->pasazerow_w_trasie <= 0 && s->pasazerow_czeka <= 0) {
                 log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety, wszyscy rozwiezieni - koncze.");
                 s->symulacja_aktywna = false;
                 shmdt(s);
@@ -312,7 +312,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             int pasazerow_na_dworcu = s->pasazerow_czeka;
             int pasazerow_w_trasie = s->pasazerow_w_trasie;
             s->symulacja_aktywna = false;
-            s->stacja_otwarta = false;
+            s->dworzec_otwarty = false;
             //pasazerowie na dworcu
             s->opuscilo_bez_jazdy += pasazerow_na_dworcu;
             s->pasazerow_czeka = 0;
@@ -326,11 +326,11 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             }
         }
         //usleep(200);
-        //NATYCHMIAST zabij wszystkie procesy potomne
+        //zabij wszystkie procesy potomne
         shutdown_children();
     } else {
         //Graceful shutdown (SIGUSR2) - normalne zakonczenie
-        //Petla glowna juz ustawila stacja_otwarta=false i czekala na pasazerow
+        //Petla glowna juz ustawila dworzec_otwarty=false i czekala na pasazerow
         log_print(KOLOR_DYSP, "DYSP", "Zamykanie symulacji (SIGUSR2)");
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s != (void *)-1) {

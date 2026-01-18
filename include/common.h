@@ -53,14 +53,14 @@ typedef struct {
     int param_T;
     int param_K;
     //Flagi stanu
-    bool stacja_otwarta; //false = dworzec zamkniety (SIGUSR2)
+    bool dworzec_otwarty; //false = dworzec zamkniety (SIGUSR2)
     bool symulacja_aktywna;// false = koniec symulacji
     //Stan autobusu na peronie
     pid_t aktualny_bus_pid;
     int aktualny_bus_id;
     int miejsca_zajete;
     int rowery_zajete;
-    bool bus_na_peronie;
+    bool bus_na_przystanku;
     //Statystyki
     int total_pasazerow;
     int pasazerow_w_trasie;

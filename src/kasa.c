@@ -52,8 +52,8 @@ void proces_kasa(int numer_kasy) {
         ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
                              numer_kasy, IPC_NOWAIT);
         if (ret != -1) {
-            //Jesli stacja zamknieta - odmow i nie obsluguj
-            if (!shm->stacja_otwarta) {
+            //Jesli dworzec zamkniety - odmow i nie obsluguj
+            if (!shm->dworzec_otwarty) {
                 KasaResponse resp;
                 resp.mtype = req.pid_pasazera;
                 resp.numer_kasy = numer_kasy;
@@ -67,7 +67,7 @@ void proces_kasa(int numer_kasy) {
             //symulacja czasu obslugi
             obsluga_start = time(NULL);
             obsluga_koniec = obsluga_start + 1; 
-            while (time(NULL) < obsluga_koniec && kasa_running && shm->stacja_otwarta) {
+            while (time(NULL) < obsluga_koniec && kasa_running && shm->dworzec_otwarty) {
             //busy-wait
             }
             KasaResponse resp;
