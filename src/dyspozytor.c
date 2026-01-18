@@ -7,7 +7,7 @@
 #include "dyspozytor.h"
 
 //PID-y procesow potomnych
-static pid_t pids_kasy[MAX_KASY] = {0}; //PID-y kas biletowych
+static pid_t pids_kasy[MAX_KASY]; //PID-y kas biletowych
 static int ile_kas = 0;//liczba kas
 static pid_t pids_busy[MAX_BUSES];//PID-y autobusow
 static int ile_busow = 0; //liczba autobusow
@@ -43,8 +43,8 @@ static void init_semafory(void) {
     arg.val = 1;
     semctl(sem_id, SEM_DOOR_NORMAL, SETVAL, arg);// SEM_DOOR_NORMAL/ROWER - kontrola wejścia do autobusu
     semctl(sem_id, SEM_DOOR_ROWER, SETVAL, arg);
-    semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);// SEM_BUS_STOP - tylko jeden autobus na peronie
-    semctl(sem_id, SEM_LOG, SETVAL, arg);// SEM_LOG - sekcja krytyczna logow
+    semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);//SEM_BUS_STOP - tylko jeden autobus na peronie
+    semctl(sem_id, SEM_LOG, SETVAL, arg);//SEM_LOG - sekcja krytyczna logow
     semctl(sem_id, SEM_SHM, SETVAL, arg);// SEM_SHM - ochrona pamięci dzielonej
 }
 //Sprzatanie zasobow IPC
@@ -134,11 +134,11 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     sa.sa_flags =SA_RESTART;
     sigemptyset(&sa.sa_mask);
 
-    sigaction(SIGUSR1, &sa, NULL);
-    sigaction(SIGUSR2, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGQUIT, &sa, NULL); 
+    sigaction(SIGUSR1, &sa,NULL);
+    sigaction(SIGUSR2, &sa,NULL);
+    sigaction(SIGINT,  &sa,NULL);
+    sigaction(SIGTERM, &sa,NULL);
+    sigaction(SIGQUIT, &sa,NULL); 
     
     //Handler SIGCHLD automatyczne zbieranie zombie
     struct sigaction sa_chld;
@@ -158,7 +158,6 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         perror("ftok");
         exit(1);
     }
-
     sem_id = semget(key_sem, SEM_COUNT, IPC_CREAT | 0600);
     shm_id = shmget(key_shm, sizeof(SharedData), IPC_CREAT | 0600);
     msg_id = msgget(key_msg, IPC_CREAT | 0600);
@@ -201,7 +200,6 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     log_print(KOLOR_DYSP, "DYSP", "Dyspozytor rozpoczął pracę. PID=%d", getpid());
     log_print(KOLOR_DYSP, "DYSP", ">>> Sygnały: kill -SIGUSR1 %d | kill -SIGUSR2 %d <<<", 
               getpid(), getpid());
-
     //uruchomienie K kas
     ile_kas = K;
     for (int i = 0; i < K; i++) {
@@ -269,10 +267,9 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             flaga_sigusr2 = 0;
             
             log_print(KOLOR_DYSP, "DYSP", ">>> SIGUSR2: ZAMYKAM DWORZEC! <<<");
-            
             SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
             if (s != (void *)-1) {
-                s->dworzec_otwarty = false;  //nowi pasazerowie nie wchodza na dworzec
+                s->dworzec_otwarty = false;//nowi pasazerowie nie wchodza na dworzec
                 shmdt(s);
             }
             //zatrzymaj generator
@@ -290,9 +287,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         //sprawdzenie czy symulacja powinna sie zakonczyc
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s != (void *)-1) {
-            //koniec gdy dworzec zamkniet i WSZYSCY pasazerowie obsluzeni
+            //koniec gdy dworzec zamkniet i WSZYSCY pasazerowie ROZWIEZIENI
             //pasazerow_w_trasie = w autobusach jadacych
-            //pasazerow_czeka = na dworcu czekajacych na autobus
             if (!s->dworzec_otwarty && s->pasazerow_w_trasie <= 0 && s->pasazerow_czeka <= 0) {
                 log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety, wszyscy rozwiezieni - koncze.");
                 s->symulacja_aktywna = false;
@@ -340,7 +336,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         log_print(KOLOR_DYSP, "DYSP", "Czekam na zakonczenie procesow");
         {
             time_t wait_start = time(NULL);
-            while (time(NULL) < wait_start +1) {
+            while (time(NULL) < wait_start + 10) {
                 waitpid(-1, NULL, WNOHANG);
             }
         }

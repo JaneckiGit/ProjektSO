@@ -52,7 +52,7 @@ void proces_kasa(int numer_kasy) {
         ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
                              numer_kasy, IPC_NOWAIT);
         if (ret != -1) {
-            //Jesli dworzec zamkniety - odmow i nie obsluguj
+            //Jesli dworzec zamkniety nie obsluguj
             if (!shm->dworzec_otwarty) {
                 KasaResponse resp;
                 resp.mtype = req.pid_pasazera;
@@ -101,7 +101,7 @@ void proces_kasa(int numer_kasy) {
         } else {
             usleep(500);  
         }
-    }//Przed zamknieciem - odrzuc wszystkich czekajacych w kolejce
+    }//Przed zamknieciem odrzuca wszystkich czekajacych w kolejce
     {
         KasaRequest req;
         while (msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 

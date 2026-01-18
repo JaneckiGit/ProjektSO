@@ -78,6 +78,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         czas_koniec = czas_start + (czas_dojazdu / 1000) + 1;
         while (time(NULL) < czas_koniec && bus_running) {
             if (czy_zakonczyc(shm)) break;
+            //usleep(1000);
         }
         if (!bus_running || czy_zakonczyc(shm)) {//sprawdzenie warunkow zakonczenia
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
@@ -154,11 +155,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         } else {
             //petla przyjmowania pasazerow
             czas_start = time(NULL);  //start pomiaru czasu postoju
-            //Czekaj dluzej jesli sa pasazerowie na dworcu i jest miejsce
-            int min_czas = czas_postoju;
-            int max_czas = czas_postoju * 2;  //maksymalnie 2x dluzej
-            
-            while (czas_na_przystanku < min_czas && !wymuszony_odjazd && bus_running && shm->dworzec_otwarty) {
+    
+            while (czas_na_przystanku < czas_postoju && !wymuszony_odjazd && bus_running && shm->dworzec_otwarty) {
                 BiletMsg bilet;
                 //najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
                 ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
@@ -256,13 +254,6 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     }
                 }
                 czas_na_przystanku = (int)((time(NULL) - czas_start) * 1000);
-                //Przedluz czekanie jesli sa pasazerowie i jest miejsce
-                if (czas_na_przystanku >= min_czas && czas_na_przystanku < max_czas) {
-                    if (shm->pasazerow_czeka > 0 && shm->miejsca_zajete < pojemnosc) {
-                        //Kontynuuj czekanie
-                        continue;
-                    }
-                }
             }
             if (wymuszony_odjazd) {
                 log_print(KOLOR_BUS, tag, ">>> WYMUSZONY ODJAZD (SIGUSR1)! PID=%d <<<", getpid());
@@ -292,23 +283,23 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         
         //Odpowiedz odmownie wszystkim nieobsluzonym pasazerom (zeby nie czekali w nieskonczonosc)
-        BiletMsg stary;
+        BiletMsg old;
         OdpowiedzMsg odmowa;
         odmowa.przyjety = 0;
         
         //VIP
-        while (msgrcv(msg_id, &stary, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1) {
-            odmowa.mtype = stary.pid_pasazera;
+        while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1) {
+            odmowa.mtype = old.pid_pasazera;
             msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
         }//Zwykli
-        while (msgrcv(msg_id, &stary, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
-            odmowa.mtype = stary.pid_pasazera;
+        while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
+            odmowa.mtype = old.pid_pasazera;
             msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
         }//Wyczysc kolejke z biletow skierowanych do tego autobusu
         {
-            BiletMsg stary;
-            while (msgrcv(msg_id, &stary, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1);
-            while (msgrcv(msg_id, &stary, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1);
+            BiletMsg old;
+            while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1);
+            while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1);
         }
         //Czekaj az drzwi beda wolne (pasazer moze byc w trakcie wsiadania)
         log_print(KOLOR_BUS, tag, "Czeka az drzwi beda wolne. PID=%d", getpid());
@@ -338,13 +329,14 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         //jazda do miejsca docelowego
         log_print(KOLOR_BUS, tag, "Jedzie do miejsca docelowego (%dms). PID=%d", czas_trasy_Ti, getpid());
         
-        //jazda do celu - bez sleep, oparty na time()
+        //jazda do celu oparty na time()
         czas_start = time(NULL);
         czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
         while (time(NULL) < czas_koniec && bus_running) {
             if (!shm->symulacja_aktywna) break;
+            //usleep(1000);
         }
-        //pasazerowie wysiadaja w miejscu docelowym - KRYTYCZNE, blokujace
+        //pasazerowie wysiadaja w miejscu docelowym KRYTYCZNE, blokujace
         {
             struct sembuf lock = {SEM_SHM, -1, SEM_UNDO};
             struct sembuf unlock = {SEM_SHM, 1, SEM_UNDO};

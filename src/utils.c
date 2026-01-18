@@ -19,12 +19,12 @@ void get_timestamp(char* buf, size_t size) {
     struct tm *t = localtime(&now);
     strftime(buf, size, "%H:%M:%S", t);
 }
-//log_print - Logowanie na ekran kolory i do pliku, WYMAGANIA: open(), write(), close(), semop()
+//log_print Logi na ekran kolor i do pliku
 void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
     struct sembuf lock = {SEM_LOG, -1, IPC_NOWAIT | SEM_UNDO};
     struct sembuf unlock = {SEM_LOG, 1, SEM_UNDO};  
     int mam_lock = 0;
-    //sekcja krytyczna - nieblokujaca
+    //sekcja krytyczna nieblokujaca
     if (sem_id != -1) {
         if (semop(sem_id, &lock, 1) == 0) {
             mam_lock = 1;
@@ -53,7 +53,6 @@ void log_print(const char* kolor, const char* tag, const char* fmt, ...) {
     int flen = snprintf(file_line, sizeof(file_line),
                         "[%s] [%-6s] %s\n",
                         time_buf, tag, msg);
-
     //raport.txt
     int fd = open("raport.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd != -1) {
@@ -102,13 +101,4 @@ void handle_error(const char* msg) {
     perror(error_buf);
     exit(EXIT_FAILURE);
 }
-//Wersja z funkcja czyszczaca
-void handle_error_cleanup(const char* msg, void (*cleanup_func)(void)) {
-    char error_buf[256];
-    snprintf(error_buf, sizeof(error_buf), "[BLAD] %s", msg);
-    perror(error_buf);
-    if (cleanup_func) {
-        cleanup_func();
-    }
-    exit(EXIT_FAILURE);
-}
+
