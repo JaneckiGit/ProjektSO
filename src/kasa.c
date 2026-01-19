@@ -99,7 +99,7 @@ void proces_kasa(int numer_kasy) {
                       req.ile_biletow, req.id_pasazera);
             obsluzonych++;
         } else {
-            usleep(500);  
+            usleep(5000);  //sched_yield();
         }
     }//Przed zamknieciem odrzuca wszystkich czekajacych w kolejce
     {

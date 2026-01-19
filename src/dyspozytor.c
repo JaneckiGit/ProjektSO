@@ -298,7 +298,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             shmdt(s);
         }
         waitpid(-1, NULL, WNOHANG);//Sprzatanie procesow zombie
-        //usleep(200000);  
+        usleep(200000);// lub sched_yield();
     }
     //ZAKONCZENIE
     if (flaga_stop) {
@@ -312,7 +312,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             //pasazerowie na dworcu
             s->opuscilo_bez_jazdy += pasazerow_na_dworcu;
             s->pasazerow_czeka = 0;
-            //Pasazerowie w trasie dodani do "przewiezionych" 
+            //Pasazerowie w trasie 
             s->total_przewiezionych += pasazerow_w_trasie;
             s->pasazerow_w_trasie = 0;
             shmdt(s);
@@ -321,7 +321,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 log_print(KOLOR_DYSP, "DYSP", "Pasazerow w trasie: %d", pasazerow_w_trasie);
             }
         }
-        //usleep(200);
+        usleep(2000); //lub sched_yield();
         //zabij wszystkie procesy potomne
         shutdown_children();
     } else {
@@ -340,6 +340,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 waitpid(-1, NULL, WNOHANG);
             }
         }
+        usleep(2000); //lub sched_yield();
         shutdown_children();
     }
     //Podsumowanie

@@ -20,6 +20,7 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <sched.h>
 
 //Stałe konfiguracyjne (MAX_BUSES, MAX_CAPACITY)
 #define MAX_BUSES           50//Maksymalna liczba autobusow
