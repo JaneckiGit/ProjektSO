@@ -168,6 +168,18 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         cleanup_ipc();
         exit(1);
     }
+    //zwiekszenie limitu kolejek komunikatow
+    struct msqid_ds buf;
+    //Kolejka autobus-pasazer
+    if (msgctl(msg_id, IPC_STAT, &buf) == 0) {
+        buf.msg_qbytes = 65536; 
+        msgctl(msg_id, IPC_SET, &buf);
+    }
+    //Kolejka kasa-pasazer
+    if (msgctl(msg_kasa_id, IPC_STAT, &buf) == 0) {
+        buf.msg_qbytes = 1048576;  //1MB  
+        msgctl(msg_kasa_id, IPC_SET, &buf);
+    }
     init_semafory();
     //inicjalizacja pamieci dzielonej shmat() shmdt()
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
@@ -204,7 +216,12 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     ile_kas = K;
     for (int i = 0; i < K; i++) {
         pids_kasy[i] = fork();
-        if (pids_kasy[i] == -1) { perror("fork kasa"); continue; }
+        if (pids_kasy[i] == -1) { 
+            perror("fork kasa"); 
+            shutdown_children();
+            cleanup_ipc();
+            exit(1);
+        }
         if (pids_kasy[i] == 0) {
             char arg_numer[16];
             snprintf(arg_numer, sizeof(arg_numer), "%d", i + 1);
@@ -219,7 +236,9 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         pids_busy[i] = fork();
         if (pids_busy[i] == -1) {
             perror("fork bus");
-            continue;
+            shutdown_children();
+            cleanup_ipc();
+            exit(1);
         }
         if (pids_busy[i] == 0) {
             char arg_id[16], arg_p[16], arg_r[16], arg_t[16];
@@ -235,11 +254,14 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     log_print(KOLOR_MAIN, "MAIN", "Wszystkie procesy uruchomione.");
     
     //uruchomienie generatora pasazerow (przez exec)
-    pid_generator = fork(); // utworz proces potomny
+    pid_generator = fork();
     if (pid_generator == -1) {
         perror("fork generator");
-    } else if (pid_generator == 0) {//proces dziecka
-        execl("./bin/pasazer", "pasazer", "generator", NULL); // uruchom generator
+        shutdown_children();
+        cleanup_ipc();
+        exit(1);
+    } else if (pid_generator == 0) {
+        execl("./bin/pasazer", "pasazer", "generator", NULL);
         perror("execl generator");
         exit(1);
     }
@@ -281,24 +303,52 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 if (pids_kasy[i] > 0) {
                     kill(pids_kasy[i], SIGTERM);
                 }
+            }//Wyczysc kolejke kasy - wyslij odmowy wszystkim czekajacym
+            {
+                KasaRequest req;
+                KasaResponse resp;
+                resp.sukces = 0;
+                resp.brak_srodkow = 0;
+                while (msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0, IPC_NOWAIT) != -1) {
+                    resp.mtype = req.pid_pasazera;
+                    resp.numer_kasy = 0;
+                    msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT);
+                }
             }
             log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety. Czekam na zakonczenie przejazdow");
         }
         //sprawdzenie czy symulacja powinna sie zakonczyc
+        static time_t czas_zamkniecia = 0;
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s != (void *)-1) {
-            //koniec gdy dworzec zamkniet i WSZYSCY pasazerowie ROZWIEZIENI
-            //pasazerow_w_trasie = w autobusach jadacych
-            if (!s->dworzec_otwarty && s->pasazerow_w_trasie <= 0 && s->pasazerow_czeka <= 0) {
-                log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety, wszyscy rozwiezieni - koncze.");
-                s->symulacja_aktywna = false;
-                shmdt(s);
-                break;
-            }
-            shmdt(s);
+            if (!s->dworzec_otwarty) {
+                //Ustaw czas zamkniecia przy pierwszym wykryciu
+                if (czas_zamkniecia == 0) {
+                    czas_zamkniecia = time(NULL);
+                }//Log co blokuje
+                if ((time(NULL) - czas_zamkniecia) % 10 == 0) {//co 10 sekund
+                    log_print(KOLOR_DYSP, "DYSP", "Czekam: w trasie=%d, czeka=%d", 
+                              s->pasazerow_w_trasie, s->pasazerow_czeka);
+                }//Normalne zakończenie
+                if (s->pasazerow_w_trasie <= 0 && s->pasazerow_czeka <= 0) {
+                    log_print(KOLOR_DYSP, "DYSP", "Dworzec zamkniety, wszyscy rozwiezieni - koncze.");
+                    s->symulacja_aktywna = false;
+                    shmdt(s);
+                    break;
+                }//TIMEOUT 60 sekund - wymuś zakończenie
+                if (time(NULL) - czas_zamkniecia > 60) {
+                    log_print(KOLOR_DYSP, "DYSP", "TIMEOUT 60s - wymuszam zakonczenie! w_trasie=%d, czeka=%d",
+                              s->pasazerow_w_trasie, s->pasazerow_czeka);
+                    s->symulacja_aktywna = false;
+                    s->pasazerow_w_trasie = 0;
+                    s->pasazerow_czeka = 0;
+                    shmdt(s);
+                    break;
+                }
+            }shmdt(s);
         }
-        waitpid(-1, NULL, WNOHANG);//Sprzatanie procesow zombie
-        usleep(200000);// lub sched_yield();
+        waitpid(-1, NULL, WNOHANG);
+        usleep(100000);
     }
     //ZAKONCZENIE
     if (flaga_stop) {
@@ -321,7 +371,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 log_print(KOLOR_DYSP, "DYSP", "Pasazerow w trasie: %d", pasazerow_w_trasie);
             }
         }
-        usleep(2000); //lub sched_yield();
+        //usleep(2000); //lub sched_yield();
         //zabij wszystkie procesy potomne
         shutdown_children();
     } else {
@@ -340,29 +390,31 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 waitpid(-1, NULL, WNOHANG);
             }
         }
-        usleep(2000); //lub sched_yield();
+        //usleep(2000); //lub sched_yield();
         shutdown_children();
     }
-    //Podsumowanie
-    SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
-    if (s != (void *)-1) {
-        log_print(KOLOR_STAT, "STAT", "========================================");
-        log_print(KOLOR_STAT, "STAT", "PODSUMOWANIE");
-        log_print(KOLOR_STAT, "STAT", "========================================");
-        log_print(KOLOR_STAT, "STAT", "Pasazerow ogolem: %d", s->total_pasazerow);
-        log_print(KOLOR_STAT, "STAT", "Przewiezionych: %d", s->total_przewiezionych);
-        log_print(KOLOR_STAT, "STAT", "Opuscilo bez jazdy: %d", s->opuscilo_bez_jazdy);
-        log_print(KOLOR_STAT, "STAT", "----------------------------------------");
-        log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
-        log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
-        log_print(KOLOR_STAT, "STAT", "Rodzicow z dziecmi: %d (par)", s->rodzicow_z_dziecmi);
-        log_print(KOLOR_STAT, "STAT", "Odrzuconych bez biletu: %d", s->odrzuconych_bez_biletu);
-        for (int i = 0; i < s->param_K; i++) {
-            log_print(KOLOR_STAT, "STAT", "KASA %d: %d", i+1, s->obsluzonych_kasa[i]);
+    //Podsumowanie - TYLKO przy SIGUSR2 (graceful shutdown)
+    if (!flaga_stop) {
+        SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
+        if (s != (void *)-1) {
+            log_print(KOLOR_STAT, "STAT", "========================================");
+            log_print(KOLOR_STAT, "STAT", "PODSUMOWANIE");
+            log_print(KOLOR_STAT, "STAT", "========================================");
+            log_print(KOLOR_STAT, "STAT", "Pasazerow ogolem: %d", s->total_pasazerow);
+            log_print(KOLOR_STAT, "STAT", "Przewiezionych: %d", s->total_przewiezionych);
+            log_print(KOLOR_STAT, "STAT", "Opuscilo bez jazdy: %d", s->opuscilo_bez_jazdy);
+            log_print(KOLOR_STAT, "STAT", "----------------------------------------");
+            log_print(KOLOR_STAT, "STAT", "Biletow: %d", s->sprzedanych_biletow);
+            log_print(KOLOR_STAT, "STAT", "VIP: %d", s->vip_count);
+            log_print(KOLOR_STAT, "STAT", "Rodzicow z dziecmi: %d (par)", s->rodzicow_z_dziecmi);
+            log_print(KOLOR_STAT, "STAT", "Odrzuconych bez biletu: %d", s->odrzuconych_bez_biletu);
+            for (int i = 0; i < s->param_K; i++) {
+                log_print(KOLOR_STAT, "STAT", "KASA %d: %d", i+1, s->obsluzonych_kasa[i]);
+            }
+            log_print(KOLOR_STAT, "STAT", "========================================");
+            zapisz_raport_koncowy(s);
+            shmdt(s);
         }
-        log_print(KOLOR_STAT, "STAT", "========================================");
-        zapisz_raport_koncowy(s);
-        shmdt(s);
     }
     cleanup_ipc();
     log_print(KOLOR_MAIN, "MAIN", "Koniec.");

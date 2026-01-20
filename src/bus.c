@@ -79,7 +79,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         czas_koniec = czas_start + (czas_dojazdu / 1000) + 1;
         while (time(NULL) < czas_koniec && bus_running) {
             if (czy_zakonczyc(shm)) break;
-            usleep(10000);//lub sched_yield();
+            //usleep(10000);//lub sched_yield();
         }
         if (!bus_running || czy_zakonczyc(shm)) {//sprawdzenie warunkow zakonczenia
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
@@ -300,10 +300,11 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
         //Czekaj az drzwi beda wolne (pasazer moze byc w trakcie wsiadania)
         log_print(KOLOR_BUS, tag, "Czeka az drzwi beda wolne. PID=%d", getpid());
-        struct sembuf zablokuj_n = {SEM_DOOR_NORMAL, -1, SEM_UNDO};  //blokujace
-        struct sembuf zablokuj_r = {SEM_DOOR_ROWER, -1, SEM_UNDO};   //blokujace
-        while (semop(sem_id, &zablokuj_n, 1) == -1 && errno == EINTR);
-        while (semop(sem_id, &zablokuj_r, 1) == -1 && errno == EINTR);
+        struct sembuf zablokuj_oba[2] = {
+            {SEM_DOOR_NORMAL, -1, SEM_UNDO},
+            {SEM_DOOR_ROWER, -1, SEM_UNDO}
+        };
+        while (semop(sem_id, zablokuj_oba, 2) == -1 && errno == EINTR);
         log_print(KOLOR_BUS, tag, "ZAMYKAM DRZWI PRZED ODJAZDEM. PID=%d", getpid());
         //aktualizacja stanu po odjedzie
         int w_trasie = 0;
@@ -330,7 +331,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
         while (time(NULL) < czas_koniec && bus_running) {
             if (!shm->symulacja_aktywna) break;
-            usleep(10000); //lub sched_yield();
+            //usleep(10000); //lub sched_yield();
         }
         //pasazerowie wysiadaja w miejscu docelowym KRYTYCZNE, blokujace
         {
