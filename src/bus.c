@@ -8,7 +8,7 @@
 //flagi ustawiane przez handlery sygnalow
 static volatile sig_atomic_t wymuszony_odjazd = 0;
 static volatile sig_atomic_t bus_running = 1;
-//handler sygnalow - ustawia odpowiednie flagi
+//handler sygnalow ustawia odpowiednie flagi
 static void handler_bus(int sig) {
     if (sig == SIGUSR1) {
         wymuszony_odjazd = 1;
@@ -85,7 +85,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
             break;
         }
-        //proba zajecia przystanku (non-blocking)
+        //proba zajecia przystanku 
         log_print(KOLOR_BUS, tag, "Czeka na wjazd na przystanek. PID=%d", getpid());
         struct sembuf zajmij_przystanek = {SEM_BUS_STOP, -1, SEM_UNDO};  //blokujacy!
         //Sprawdz przed zajmowaniem
@@ -104,12 +104,11 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 }//ponow probe
                 continue;
             } else {
-                perror("bus semop zajmij_peron");
+                perror("bus semop zajmij_przystanek");
                 goto koniec;
             }
         }
         mam_przystanek = 1;//zajalem przystanek
-        
         //sprawdz PO zajeciu czy dworzec nadal otwarty
         if (!shm->dworzec_otwarty || czy_zakonczyc(shm)) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety po zajeciu przystanku koncze. PID=%d", getpid());

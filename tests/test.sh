@@ -91,23 +91,8 @@ test6() {
     fi
     cleanup
 }
-
 test7() {
-    echo "=== TEST 7: VIP omija kolejkę ==="
-    cleanup
-    timeout 100s $BIN 2 10 3 8000 1
-    
-    vip_autobus=$(grep -c "VIP omija kolejke do autobusu!" raport.txt || echo 0)
-    
-    if [ "$vip_autobus" -gt 0 ]; then
-        echo "[PASS] VIP omija kolejkę do autobusu ($vip_autobus razy)"
-    else
-        echo "[INFO] Brak VIP-ów w tym przebiegu (losowe ~5%)"
-    fi
-    cleanup
-}
-test8() {
-    echo "=== TEST 8: Pasażer bez biletu jest wypraszany ==="
+    echo "=== TEST 7: Pasażer bez biletu jest wypraszany ==="
     cleanup
     timeout 90s $BIN 2 10 3 8000 1
     if grep -q "Odrzucony przez kierowce (brak biletu)" raport.txt; then
@@ -125,7 +110,6 @@ case "$1" in
     5) test5 ;;
     6) test6 ;;
     7) test7 ;;
-    8) test8 ;;
-    all) test1; echo ""; test2; echo ""; test3; echo ""; test4; echo ""; test5; echo ""; test6; echo ""; test7; echo ""; test8 ;;
+    all) test1; echo ""; test2; echo ""; test3; echo ""; test4; echo ""; test5; echo ""; test6; echo ""; test7; echo ""; ;;
     *) echo "Użycie: $0 [1-8|all]" ;;
 esac

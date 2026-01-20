@@ -59,7 +59,13 @@ void proces_kasa(int numer_kasy) {
                 resp.numer_kasy = numer_kasy;
                 resp.sukces = 0;
                 resp.brak_srodkow = 0;
-                msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT);
+                int retry = 0;
+                while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT) == -1 && retry < 5) {
+                    if (errno == EAGAIN) { 
+                        //usleep(5000); 
+                        retry++; continue; }
+                    break;
+                }
                 continue;
             }
             log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)",
@@ -76,7 +82,13 @@ void proces_kasa(int numer_kasy) {
             if (losuj(1, 100) <= 2) {
                 resp.sukces = 0;
                 resp.brak_srodkow = 1;
-                msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT);
+                int retry = 0;
+                while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT) == -1 && retry < 5) {
+                    if (errno == EAGAIN) { 
+                        //usleep(5000); 
+                        retry++; continue; }
+                    break;
+                }
                 log_print(KOLOR_KASA, tag, "Odmowa sprzedazy PAS %d - BRAK SRODKOW", req.id_pasazera);
                 continue;
             }
@@ -94,7 +106,13 @@ void proces_kasa(int numer_kasy) {
             shm->obsluzonych_kasa[numer_kasy - 1]++;
             while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
             resp.sukces = 1;
-            msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT);
+            int retry = 0;
+            while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT) == -1 && retry < 5) {
+                if (errno == EAGAIN) { 
+                    //usleep(5000); 
+                    retry++; continue; }
+                break;
+            }
             log_print(KOLOR_KASA, tag, "Sprzedano %d bilet(y) PAS %d",
                       req.ile_biletow, req.id_pasazera);
             obsluzonych++;

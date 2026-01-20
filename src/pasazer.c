@@ -303,10 +303,17 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         req.wiek = wiek;
         req.ile_biletow = ile_biletow;
         
-        if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0) == -1) {
+        
+        while (shm->symulacja_aktywna && shm->dworzec_otwarty) {
+            if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), IPC_NOWAIT) == 0) break;
+            if (errno == EAGAIN) { 
+                //usleep(10000);
+                continue; }
+            if (errno == EINTR) continue;
             perror("pasazer msgsnd kasa");
             return 0;
         }
+        if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) return -1;
         //Czekaj na odpowiedz z kasy nieblokująco sprawdzaj 
         KasaResponse resp;
         while (shm->symulacja_aktywna) {  
@@ -580,18 +587,18 @@ void proces_generator(void) {
             exit(1);
         }
         id_pas++;
-        {
-            time_t gen_start = time(NULL);//czas rozpoczecia generowania
-            time_t gen_koniec = gen_start + losuj(1, 2);  //1-2 sekundy
-            while (time(NULL) < gen_koniec) {//czekaj z przerwami na sprawdzenie stanu symulacji
-                SharedData *chk = (SharedData *)shmat(shm_id, NULL, 0);//sprawdz stan symulacji
-                if (chk != (void *)-1) {//udalo sie dolaczyc
-                    bool akt = chk->symulacja_aktywna;//sprawdz czy aktywna
-                    shmdt(chk);//odlaczenie
-                    if (!akt) break;//wyjscie z petli
-                }
-            }
-        }
+        // {
+        //     time_t gen_start = time(NULL);//czas rozpoczecia generowania
+        //     time_t gen_koniec = gen_start + losuj(1, 2);  //1-2 sekundy
+        //     while (time(NULL) < gen_koniec) {//czekaj z przerwami na sprawdzenie stanu symulacji
+        //         SharedData *chk = (SharedData *)shmat(shm_id, NULL, 0);//sprawdz stan symulacji
+        //         if (chk != (void *)-1) {//udalo sie dolaczyc
+        //             bool akt = chk->symulacja_aktywna;//sprawdz czy aktywna
+        //             shmdt(chk);//odlaczenie
+        //             if (!akt) break;//wyjscie z petli
+        //         }
+        //     }
+        // }
     }
     exit(0);
 }
