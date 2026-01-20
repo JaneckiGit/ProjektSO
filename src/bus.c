@@ -3,6 +3,7 @@
 //obsluguje sygnaly SIGUSR1 (wymuszony odjazd) i SIGTERM (koniec pracy)
 #include "bus.h"
 #include "common.h"
+#include <sched.h>
 
 //flagi ustawiane przez handlery sygnalow
 static volatile sig_atomic_t wymuszony_odjazd = 0;
@@ -78,7 +79,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         czas_koniec = czas_start + (czas_dojazdu / 1000) + 1;
         while (time(NULL) < czas_koniec && bus_running) {
             if (czy_zakonczyc(shm)) break;
-            //usleep(1000);
+            //usleep(10000);//lub sched_yield();
         }
         if (!bus_running || czy_zakonczyc(shm)) {//sprawdzenie warunkow zakonczenia
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
@@ -157,13 +158,13 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             czas_start = time(NULL);  //start pomiaru czasu postoju
     
             while (czas_na_przystanku < czas_postoju && !wymuszony_odjazd && bus_running && shm->dworzec_otwarty) {
-                BiletMsg bilet;
-                //najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
-                ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
-                if (ret == -1 && errno == ENOMSG) {
-                    ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT);
-                }
-                if (ret != -1) {
+            BiletMsg bilet;
+            //najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
+            ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
+            if (ret == -1 && errno == ENOMSG) {
+            ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT);
+            }
+            if (ret != -1) {
                     //weryfikacja biletu
                     if (!bilet.ma_bilet) {
                         log_print(KOLOR_BUS, tag, "Kierowca: PAS %d BEZ BILETU - odmowa!", bilet.id_pasazera);
@@ -208,6 +209,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         } else {
                             shm->miejsca_zajete += ile_osob;
                         }
+                        shm->pasazerow_w_trasie += ile_osob;
                         pasazerow_w_kursie += ile_osob;
                         int miejsca = shm->miejsca_zajete;
                         int rower_zajete = shm->rowery_zajete;
@@ -295,18 +297,14 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
             odmowa.mtype = old.pid_pasazera;
             msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
-        }//Wyczysc kolejke z biletow skierowanych do tego autobusu
-        {
-            BiletMsg old;
-            while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1);
-            while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1);
         }
         //Czekaj az drzwi beda wolne (pasazer moze byc w trakcie wsiadania)
         log_print(KOLOR_BUS, tag, "Czeka az drzwi beda wolne. PID=%d", getpid());
-        struct sembuf zablokuj_n = {SEM_DOOR_NORMAL, -1, SEM_UNDO};  //blokujace
-        struct sembuf zablokuj_r = {SEM_DOOR_ROWER, -1, SEM_UNDO};   //blokujace
-        while (semop(sem_id, &zablokuj_n, 1) == -1 && errno == EINTR);
-        while (semop(sem_id, &zablokuj_r, 1) == -1 && errno == EINTR);
+        struct sembuf zablokuj_oba[2] = {
+            {SEM_DOOR_NORMAL, -1, SEM_UNDO},
+            {SEM_DOOR_ROWER, -1, SEM_UNDO}
+        };
+        while (semop(sem_id, zablokuj_oba, 2) == -1 && errno == EINTR);
         log_print(KOLOR_BUS, tag, "ZAMYKAM DRZWI PRZED ODJAZDEM. PID=%d", getpid());
         //aktualizacja stanu po odjedzie
         int w_trasie = 0;
@@ -314,7 +312,6 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             if (errno == EINTR) continue;
             break;
         }
-        shm->pasazerow_w_trasie += pasazerow_w_kursie;
         przewiezionych += pasazerow_w_kursie;
         w_trasie = shm->pasazerow_w_trasie;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
@@ -334,7 +331,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
         while (time(NULL) < czas_koniec && bus_running) {
             if (!shm->symulacja_aktywna) break;
-            //usleep(1000);
+            //usleep(10000); //lub sched_yield();
         }
         //pasazerowie wysiadaja w miejscu docelowym KRYTYCZNE, blokujace
         {
