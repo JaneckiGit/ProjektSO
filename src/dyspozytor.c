@@ -327,7 +327,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                     czas_zamkniecia = time(NULL);
                 }//Log co blokuje
                 static time_t ostatni_log = 0;
-                if ((time(NULL) - ostatni_log) >= 5) {//co 5 sekund
+                if ((time(NULL) - ostatni_log) >= 10) {//co 10 sekund
                     log_print(KOLOR_DYSP, "DYSP", "Czekam: w trasie=%d, czeka=%d", 
                               s->pasazerow_w_trasie, s->pasazerow_czeka);
                     ostatni_log = time(NULL);
@@ -338,8 +338,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                     shmdt(s);
                     break;
                 }//TIMEOUT 60 sekund wymuś zakończenie
-                if (time(NULL) - czas_zamkniecia > 60) {
-                    log_print(KOLOR_DYSP, "DYSP", "TIMEOUT 60s - wymuszam zakonczenie! w trasie=%d, czeka=%d",
+                if (time(NULL) - czas_zamkniecia > 90) {
+                    log_print(KOLOR_DYSP, "DYSP", "TIMEOUT 90s - wymuszam zakonczenie! w trasie=%d, czeka=%d",
                               s->pasazerow_w_trasie, s->pasazerow_czeka);
                     s->symulacja_aktywna = false;
                     s->pasazerow_w_trasie = 0;
