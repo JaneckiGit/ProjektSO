@@ -93,7 +93,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze. PID=%d", getpid());
             goto koniec;
         }
-        //blokujace zajecie przystanku autobus przejdzie
+        //blokujace zajecie przystanku 
         //Petla retry dla EINTR
         while (semop(sem_id, &zajmij_przystanek, 1) == -1) {
             if (errno == EINTR) {
@@ -171,7 +171,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                             shm->odrzuconych_bez_biletu++;
                             semop(sem_id, &shm_unlock, 1);
                         }
-                        //wyslij odmowe do pasazera
+                        //wyslij odmowe do pasazera blokujaco
                         OdpowiedzMsg odp_bez = { .mtype = bilet.pid_pasazera, .przyjety = 0 };
                         msgsnd(msg_id, &odp_bez, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                         continue;
@@ -230,7 +230,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                                       bilet.czy_rower ? " +rower" : "",
                                       bilet.czy_vip ? " VIP" : "",
                                       miejsca, pojemnosc, rower_zajete, rowery);
-                        }//potwierdzenie dla pasazera
+                        }//potwierdzenie dla pasazera 
                         OdpowiedzMsg odp = { .mtype = bilet.pid_pasazera, .przyjety = 1 };
                         msgsnd(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
 
@@ -243,11 +243,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     else {//brak miejsc - odmowa
                         semop(sem_id, &shm_unlock, 1);
                         if (bilet.czy_rower && shm->rowery_zajete + ile_osob > rowery) {
-                            log_print(KOLOR_BUS, tag, "Odmowa PAS %d (PID=%d): brak miejsc rowerowych",
-                                      bilet.id_pasazera, bilet.pid_pasazera);
+                            log_print(KOLOR_BUS, tag, "Odmowa PAS %d (PID=%d): brak miejsc rowerowych", bilet.id_pasazera, bilet.pid_pasazera);
                         } else {
-                            log_print(KOLOR_BUS, tag, "Odmowa PAS %d (PID=%d): brak miejsc", //np rodzic z dzieckiem 9/10 miejsc zajetych a przychodza 2 osoby
-                                      bilet.id_pasazera, bilet.pid_pasazera);
+                            log_print(KOLOR_BUS, tag, "Odmowa PAS %d (PID=%d): brak miejsc",bilet.id_pasazera, bilet.pid_pasazera);
                         }
                         //odmowa dla pasazera
                         OdpowiedzMsg odp = { .mtype = bilet.pid_pasazera, .przyjety = 0 };
@@ -283,7 +281,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->aktualny_bus_id = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         
-        //Odpowiedz odmownie wszystkim nieobsluzonym pasazerom (zeby nie czekali w nieskonczonosc)
+        //Odpowiedz wszystkim nieobsluzonym pasazerom (zeby nie czekali w nieskonczonosc) ODMOW
         BiletMsg old;
         OdpowiedzMsg odmowa;
         odmowa.przyjety = 0;
@@ -315,8 +313,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         w_trasie = shm->pasazerow_w_trasie;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
 
-        log_print(KOLOR_BUS, tag, "ODJAZD! Zabral %d osob. W trasie: %d. PID=%d",
-                  pasazerow_w_kursie, w_trasie, getpid());
+        log_print(KOLOR_BUS, tag, "ODJAZD! Zabral %d osob. W trasie: %d. PID=%d",pasazerow_w_kursie, w_trasie, getpid());
         //zwolnienie peronu i otwarcie drzwi
         semop(sem_id, &odblokuj_drzwi_n, 1);
         semop(sem_id, &odblokuj_drzwi_r, 1);

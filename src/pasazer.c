@@ -41,7 +41,7 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
     bilet.wiek_dziecka = wiek_dziecka;
     //nieblokujace wysylanie z retry przy przepelnieniu kolejki
     int retry = 0;
-    while (retry < 30) {  
+    while (retry < 5) {  
         if (msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), IPC_NOWAIT) == 0) {
             return 0; 
         }if (errno == EAGAIN) {
@@ -107,14 +107,13 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 continue;
             }
             //Wyslij bilet
-            if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,
-                             id_dziecka, wiek_dziecka) != 0) {
+            if (wyslij_bilet(shm, id_pas, wiek, czy_rower, czy_vip, ma_bilet,id_dziecka, wiek_dziecka) != 0) {
                 semop(sem_id, wyjdz_oba, 2);
                 continue;
             }
             //czekaj na odpowiedz NIEBLOKUJACO sprawdzaj czy autobus nie odjechal
             OdpowiedzMsg odp;
-            int ret;
+            int ret;//wynik msgrcv
             while (1) {
                 ret = msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), getpid(), IPC_NOWAIT);
                 if (ret != -1) break;
@@ -174,7 +173,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             }
             //czekaj na odpowiedz NIEBLOKUJACO
             OdpowiedzMsg odp;
-            int ret;
+            int ret; //wynik msgrcv
             while (1) {
                 ret = msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), getpid(), IPC_NOWAIT);
                 if (ret != -1) break;
@@ -280,7 +279,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
 }
 //funkcja kupowania biletu (zwykly lub VIP)
 static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int czy_vip, int ile_biletow) {
-    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};  //blokujacy - bez IPC_NOWAIT
+    struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO}; 
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     
     if (!czy_vip) {
@@ -302,8 +301,6 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         req.id_pasazera = id_pas;
         req.wiek = wiek;
         req.ile_biletow = ile_biletow;
-        
-        
         while (shm->symulacja_aktywna && shm->dworzec_otwarty) {
             if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), IPC_NOWAIT) == 0) break;
             if (errno == EAGAIN) { 
@@ -383,7 +380,7 @@ void proces_pasazer(int id_pas) {
         shmdt(shm);
         exit(0);
     }
-    int wiek = losuj(9, 80);
+    int wiek = losuj(8, 80);
     int czy_rower = (losuj(1, 100) <= 25);// najpierw rower
     int czy_vip = 0;
     if (!czy_rower) {//VIP tylko bez roweru
@@ -587,18 +584,18 @@ void proces_generator(void) {
             exit(1);
         }
         id_pas++;
-        // {
-        //     time_t gen_start = time(NULL);//czas rozpoczecia generowania
-        //     time_t gen_koniec = gen_start + losuj(1, 2);  //1-2 sekundy
-        //     while (time(NULL) < gen_koniec) {//czekaj z przerwami na sprawdzenie stanu symulacji
-        //         SharedData *chk = (SharedData *)shmat(shm_id, NULL, 0);//sprawdz stan symulacji
-        //         if (chk != (void *)-1) {//udalo sie dolaczyc
-        //             bool akt = chk->symulacja_aktywna;//sprawdz czy aktywna
-        //             shmdt(chk);//odlaczenie
-        //             if (!akt) break;//wyjscie z petli
-        //         }
-        //     }
-        // }
+        {
+            time_t gen_start = time(NULL);//czas rozpoczecia generowania
+            time_t gen_koniec = gen_start + losuj(1, 2);  //1-2 sekundy
+            while (time(NULL) < gen_koniec) {//czekaj z przerwami na sprawdzenie stanu symulacji
+                SharedData *chk = (SharedData *)shmat(shm_id, NULL, 0);//sprawdz stan symulacji
+                if (chk != (void *)-1) {//udalo sie dolaczyc
+                    bool akt = chk->symulacja_aktywna;//sprawdz czy aktywna
+                    shmdt(chk);//odlaczenie
+                    if (!akt) break;//wyjscie z petli
+                }
+            }
+        }
     }
     exit(0);
 }
