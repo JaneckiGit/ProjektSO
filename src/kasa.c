@@ -49,8 +49,7 @@ void proces_kasa(int numer_kasy) {
     while (kasa_running && shm->symulacja_aktywna) {
         KasaRequest req;
         //IPC_NOWAIT nie bedzie blokowane jesli nie mawiadomosci
-        ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
-                             numer_kasy, IPC_NOWAIT);
+        ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), numer_kasy, IPC_NOWAIT);
         if (ret != -1) {
             //Jesli dworzec zamkniety nie obsluguj
             if (!shm->dworzec_otwarty) {
@@ -68,8 +67,7 @@ void proces_kasa(int numer_kasy) {
                 }
                 continue;
             }
-            log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)",
-                      req.id_pasazera, req.wiek, req.ile_biletow);
+            log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)", req.id_pasazera, req.wiek, req.ile_biletow);
             // //symulacja czasu obslugi 
             // obsluga_start = time(NULL);
             // obsluga_koniec = obsluga_start + 1;  

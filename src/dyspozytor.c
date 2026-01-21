@@ -210,8 +210,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
     //START
     log_print(KOLOR_MAIN, "MAIN", "START: N=%d P=%d R=%d T=%d K=%d", N, P, R, T, K);
     log_print(KOLOR_DYSP, "DYSP", "Dyspozytor rozpoczął pracę. PID=%d", getpid());
-    log_print(KOLOR_DYSP, "DYSP", ">>> Sygnały: kill -SIGUSR1 %d | kill -SIGUSR2 %d <<<", 
-              getpid(), getpid());
+    log_print(KOLOR_DYSP, "DYSP", ">>> Sygnały: kill -SIGUSR1 %d | kill -SIGUSR2 %d <<<", getpid(), getpid());
     //uruchomienie K kas
     ile_kas = K;
     for (int i = 0; i < K; i++) {
@@ -274,9 +273,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             if (s != (void *)-1) {
                 //Sprawdz OBYDWA warunki: bus_na_przystanku ORAZ aktualny_bus_pid
                 if (s->bus_na_przystanku && s->aktualny_bus_pid > 0) {
-                    log_print(KOLOR_DYSP, "DYSP", 
-                              ">>> SIGUSR1: Wymuszam odjazd BUS PID=%d <<<", 
-                              s->aktualny_bus_pid);
+                    log_print(KOLOR_DYSP, "DYSP", ">>> SIGUSR1: Wymuszam odjazd BUS PID=%d <<<", s->aktualny_bus_pid);
                     kill(s->aktualny_bus_pid, SIGUSR1);
                 } else {
                     log_print(KOLOR_DYSP, "DYSP", "SIGUSR1: Brak autobusu na peronie.");
