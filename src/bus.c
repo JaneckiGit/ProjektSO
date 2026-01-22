@@ -28,6 +28,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     
     //losowy czas trasy dla autobusu (15-30s)
     int czas_trasy_Ti = losuj(15000, 30000);
+    //int czas_trasy_Ti = 0;
 
     //konfiguracja handlerow sygnalow
     struct sigaction sa;
@@ -72,11 +73,14 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
         //jazda na dworzec pierwszy kurs krotszy
         int czas_dojazdu = (kursow == 0) ? losuj(1000, 2000) : losuj(8000, 15000);
+        //int czas_dojazdu = 0;
         log_print(KOLOR_BUS, tag, "Wraca na dworzec (%dms). PID=%d", czas_dojazdu, getpid());
         
         //czekanie z mozliwoscia przerwania oparte na time()
         czas_start = time(NULL);
         czas_koniec = czas_start + (czas_dojazdu / 1000) + 1;
+        //czas_start = time(NULL);
+        //czas_koniec = czas_start;
         while (time(NULL) < czas_koniec && bus_running) {
             if (czy_zakonczyc(shm)) break;
             //usleep(10000);//lub sched_yield();
@@ -253,6 +257,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                     }
                 }
                 czas_na_przystanku = (int)((time(NULL) - czas_start) * 1000);
+                //czas_na_przystanku = (int)(time(NULL) - czas_start);
             }
             if (wymuszony_odjazd) {
                 log_print(KOLOR_BUS, tag, ">>> WYMUSZONY ODJAZD (SIGUSR1)! PID=%d <<<", getpid());
@@ -272,37 +277,34 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 break;
             }
         }//sygnalizacja odjazdu pasazerowie w drzwiach zobacza ze bus odjechal i zwolnia semafor
-        while (semop(sem_id, &shm_lock, 1) == -1) {
-            if (errno == EINTR) continue;
-            break;
-        }
+        //ODJAZD - najpierw ustaw flage, potem odpowiedz, potem zamknij drzwi
+        while (semop(sem_id, &shm_lock, 1) == -1 && errno == EINTR);
         shm->bus_na_przystanku = false;
         shm->aktualny_bus_pid = 0;
         shm->aktualny_bus_id = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         
-        //Odpowiedz wszystkim nieobsluzonym pasazerom (zeby nie czekali w nieskonczonosc) ODMOW
+        //Odpowiedz wszystkim nieobsluzonym pasazerom ODMOW
         BiletMsg old;
         OdpowiedzMsg odmowa;
         odmowa.przyjety = 0;
-        
-        //VIP
+        //VIP 
         while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1) {
             odmowa.mtype = old.pid_pasazera;
-            msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
-        }//Zwykli
+            msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), 0);
+        }
+        //Zwykli 
         while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
             odmowa.mtype = old.pid_pasazera;
-            msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
+            msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), 0);
         }
-        //Czekaj az drzwi beda wolne (pasazer moze byc w trakcie wsiadania)
-        log_print(KOLOR_BUS, tag, "Czeka az drzwi beda wolne. PID=%d", getpid());
-        struct sembuf zablokuj_oba[2] = {
-            {SEM_DOOR_NORMAL, -1, SEM_UNDO},
-            {SEM_DOOR_ROWER, -1, SEM_UNDO}
-        };
-        while (semop(sem_id, zablokuj_oba, 2) == -1 && errno == EINTR);
-        log_print(KOLOR_BUS, tag, "ZAMYKAM DRZWI PRZED ODJAZDEM. PID=%d", getpid());
+        //Zamknij drzwi - pasazerowie juz widza bus_na_przystanku=false i zwalniaja
+        log_print(KOLOR_BUS, tag, "Zamykam drzwi. PID=%d", getpid());
+        struct sembuf zablokuj_normal = {SEM_DOOR_NORMAL, -1, SEM_UNDO};
+        struct sembuf zablokuj_rower = {SEM_DOOR_ROWER, -1, SEM_UNDO};
+        while (semop(sem_id, &zablokuj_normal, 1) == -1 && errno == EINTR);
+        while (semop(sem_id, &zablokuj_rower, 1) == -1 && errno == EINTR);
+        log_print(KOLOR_BUS, tag, "DRZWI ZAMKNIETE. PID=%d", getpid());
         //aktualizacja stanu po odjedzie
         int w_trasie = 0;
         while (semop(sem_id, &shm_lock, 1) == -1) {
@@ -325,6 +327,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         //jazda do celu oparty na time()
         czas_start = time(NULL);
         czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
+        //czas_start = time(NULL);
         while (time(NULL) < czas_koniec && bus_running) {
             if (!shm->symulacja_aktywna) break;
             //usleep(10000); //lub sched_yield();

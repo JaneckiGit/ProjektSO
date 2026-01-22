@@ -301,32 +301,42 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         req.id_pasazera = id_pas;
         req.wiek = wiek;
         req.ile_biletow = ile_biletow;
-        while (shm->symulacja_aktywna && shm->dworzec_otwarty) {
-            if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), IPC_NOWAIT) == 0) break;
-            if (errno == EAGAIN) { 
-                //usleep(10000);
-                continue; }
-            if (errno == EINTR) continue;
-            perror("pasazer msgsnd kasa");
-            return 0;
+        //zajmij miejsce w kolejce
+        struct sembuf zajmij_straznik = {SEM_KASA_STRAZNIK, -1, SEM_UNDO};
+        struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};
+
+        while (semop(sem_id, &zajmij_straznik, 1) == -1) {
+            if (errno == EINTR) {
+                if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) return -1;
+                continue;
+            }
+            return -1;
         }
-        if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) return -1;
-        //Czekaj na odpowiedz z kasy nieblokująco sprawdzaj 
+        if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
+            semop(sem_id, &zwolnij_straznik, 1);
+            return -1;
+        }   
+        //WYŚLIJ ZAPYTANIE DO KASY (BLOKUJĄCE)
+        while (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0) == -1) {
+            if (errno == EINTR) {
+                if (!shm->symulacja_aktywna) {
+                    semop(sem_id, &zwolnij_straznik, 1);
+                    return -1;
+                }
+                continue;   
+            }
+            semop(sem_id, &zwolnij_straznik, 1);
+            return -1;
+        }
+        //CZEKAJ NA ODPOWIEDŹ
+        //Strażnik zwalnia KASA po odebraniu żądania
         KasaResponse resp;
-        while (shm->symulacja_aktywna) {  
-            if (msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), IPC_NOWAIT) != -1) {
-                break;  //Odebrano odpowiedz
+        while (msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), 0) == -1) {
+            if (errno == EINTR) {
+                if (!shm->symulacja_aktywna) return -1;
+                continue;
             }
-            if (errno != ENOMSG) {
-                perror("pasazer msgrcv kasa");
-                return 0;
-            }
-            //Sprawdzenie czy dworzec nadal otwarty - jesli nie, wyjdz bez czekania na kase
-            if (!shm->dworzec_otwarty) {
-                return -1;
-            }
-            //sched_yield();
-            //usleep(5000);
+            return -1;
         }
         //Sprawdzenie czy symulacja zostala przerwana
         if (!shm->symulacja_aktywna) {
@@ -555,6 +565,8 @@ void proces_generator(void) {
     signal(SIGCHLD, SIG_IGN);
     srand(time(NULL) ^ getpid());
     int id_pas = 0;
+    //int n = 10000;
+    //while (n--) {
     while (1) {
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s == (void *)-1) exit(1);

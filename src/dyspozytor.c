@@ -46,6 +46,7 @@ static void init_semafory(void) {
     semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);//SEM_BUS_STOP - tylko jeden autobus na peronie
     semctl(sem_id, SEM_LOG, SETVAL, arg);//SEM_LOG - sekcja krytyczna logow
     semctl(sem_id, SEM_SHM, SETVAL, arg);// SEM_SHM - ochrona pamięci dzielonej
+    semctl(sem_id, SEM_KASA_STRAZNIK, SETVAL, arg);// SEM_KASA_STRAZNIK - ochrona kas biletowych
 }
 //Sprzatanie zasobow IPC
 //wywolywane przy zakonczeniu symulacji
@@ -235,8 +236,8 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         pids_busy[i] = fork();
         if (pids_busy[i] == -1) {
             perror("fork bus");
-            shutdown_children();
-            cleanup_ipc();
+            shutdown_children();// zamiast zabijac powinnismy poczekac na zakonczenie
+            cleanup_ipc();  //powinien byc waitpid a potem cleanup powinien czekac na wszystkie procesy potomne
             exit(1);
         }
         if (pids_busy[i] == 0) {
@@ -347,7 +348,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             }shmdt(s);
         }
         waitpid(-1, NULL, WNOHANG);
-        usleep(100000);
+        //usleep(100000);
     }
     //ZAKONCZENIE
     if (flaga_stop) {
@@ -389,7 +390,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 waitpid(-1, NULL, WNOHANG);
             }
         }
-        //usleep(2000); //lub sched_yield();
+        //usleep(20000); //lub sched_yield();
         shutdown_children();
     }
     //Podsumowanie - TYLKO przy SIGUSR2 (graceful shutdown)

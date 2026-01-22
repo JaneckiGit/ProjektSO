@@ -40,6 +40,7 @@ void proces_kasa(int numer_kasy) {
     //operacje na semaforach
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
+    struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};  // NOWY
 
     int obsluzonych = 0;//liczba obsluzonych pasazerow
     //time_t obsluga_start, obsluga_koniec;  //do mierzenia czasu obslugi
@@ -48,86 +49,84 @@ void proces_kasa(int numer_kasy) {
     //glowna petla  odbiera wiadomosci od pasazerow
     while (kasa_running && shm->symulacja_aktywna) {
         KasaRequest req;
-        //IPC_NOWAIT nie bedzie blokowane jesli nie mawiadomosci
-        ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), numer_kasy, IPC_NOWAIT);
-        if (ret != -1) {
-            //Jesli dworzec zamkniety nie obsluguj
-            if (!shm->dworzec_otwarty) {
-                KasaResponse resp;
-                resp.mtype = req.pid_pasazera;
-                resp.numer_kasy = numer_kasy;
-                resp.sukces = 0;
-                resp.brak_srodkow = 0;
-                int retry = 0;
-                while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT) == -1 && retry < 5) {
-                    if (errno == EAGAIN) { 
-                        //usleep(5000); 
-                        retry++; continue; }
-                    break;
-                }
-                continue;
-            }
-            log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)", req.id_pasazera, req.wiek, req.ile_biletow);
-            // //symulacja czasu obslugi 
-            // obsluga_start = time(NULL);
-            // obsluga_koniec = obsluga_start + 1;  
-            // while (time(NULL) < obsluga_koniec && kasa_running && shm->dworzec_otwarty) {
-            // }
-            KasaResponse resp;
-            resp.mtype = req.pid_pasazera;
-            resp.numer_kasy = numer_kasy;
-            //2% szans na odmowe sprzedazy z powodu braku srodkow pasazera
-            if (losuj(1, 100) <= 2) {
-                resp.sukces = 0;
-                resp.brak_srodkow = 1;
-                int retry = 0;
-                while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT) == -1 && retry < 5) {
-                    if (errno == EAGAIN) { 
-                        //usleep(5000); 
-                        retry++; continue; }
-                    break;
-                }
-                log_print(KOLOR_KASA, tag, "Odmowa sprzedazy PAS %d - BRAK SRODKOW", req.id_pasazera);
-                continue;
-            }
-            //aktualizacja statystyk
-            while (semop(sem_id, &shm_lock, 1) == -1) {
-                if (errno == EINTR) continue;
-                break;
-            }
-            if (shm->registered_count < MAX_REGISTERED) {
-                shm->registered_pids[shm->registered_count] = req.pid_pasazera;
-                shm->registered_wiek[shm->registered_count] = req.wiek;
-                shm->registered_count++;
-            }
-            shm->sprzedanych_biletow += req.ile_biletow;
-            shm->obsluzonych_kasa[numer_kasy - 1]++;
-            while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
-            resp.sukces = 1;
-            int retry = 0;
-            while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT) == -1 && retry < 5) {
-                if (errno == EAGAIN) { 
-                    //usleep(5000); 
-                    retry++; continue; }
-                break;
-            }
-            log_print(KOLOR_KASA, tag, "Sprzedano %d bilet(y) PAS %d",
-                      req.ile_biletow, req.id_pasazera);
-            obsluzonych++;
-        } else {
-            //usleep(5000);  //sched_yield();
+        //BLOKUJĄCE odbieranie 
+        ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), numer_kasy, 0);
+        if (ret == -1) {
+            if (errno == EINTR) continue;  //Przerwane sygnałem sprawdzenie flagi
+            break;  //Inny blad - zakończ
         }
-    }//Przed zamknieciem odrzuca wszystkich czekajacych w kolejce
-    {
-        KasaRequest req;
-        while (msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
-                      numer_kasy, IPC_NOWAIT) != -1) {
+        // ZWOLNIJ STRAŻNIKA (miejsce w kolejce zwolnione!)
+        semop(sem_id, &zwolnij_straznik, 1);
+        //Jesli dworzec zamkniety - odrzuć
+        if (!shm->dworzec_otwarty) {
             KasaResponse resp;
             resp.mtype = req.pid_pasazera;
             resp.numer_kasy = numer_kasy;
             resp.sukces = 0;
             resp.brak_srodkow = 0;
-            msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), IPC_NOWAIT);
+            //BLOKUJĄCE wysylanie 
+            while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
+                if (errno == EINTR) continue;
+                break;
+            }
+            continue;
+        }
+        log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)", req.id_pasazera, req.wiek, req.ile_biletow);
+        KasaResponse resp;
+        resp.mtype = req.pid_pasazera;
+        resp.numer_kasy = numer_kasy;
+        //2% szans na odmowe sprzedazy z powodu braku srodkow pasazera
+        if (losuj(1, 100) <= 2) {
+            resp.sukces = 0;
+            resp.brak_srodkow = 1;
+            // BLOKUJĄCE wysyłanie 
+            while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
+                if (errno == EINTR) continue;
+                break;
+            }
+            log_print(KOLOR_KASA, tag, "Odmowa sprzedazy PAS %d - BRAK SRODKOW", req.id_pasazera);
+            continue;
+        }
+        //aktualizacja statystyk
+        while (semop(sem_id, &shm_lock, 1) == -1) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (shm->registered_count < MAX_REGISTERED) {
+            shm->registered_pids[shm->registered_count] = req.pid_pasazera;
+            shm->registered_wiek[shm->registered_count] = req.wiek;
+            shm->registered_count++;
+        }
+        shm->sprzedanych_biletow += req.ile_biletow;
+        shm->obsluzonych_kasa[numer_kasy - 1]++;
+        while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
+        resp.sukces = 1;
+        resp.brak_srodkow = 0;
+        //BLOKUJĄCE wysylanie 
+        while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        log_print(KOLOR_KASA, tag, "Sprzedano %d bilet(y) PAS %d",
+                  req.ile_biletow, req.id_pasazera);
+        obsluzonych++;
+    }
+    // Cleanup - msgrcv 
+    {
+        KasaRequest req;
+        while (msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
+                      numer_kasy, IPC_NOWAIT) != -1) {
+            semop(sem_id, &zwolnij_straznik, 1);
+            KasaResponse resp;
+            resp.mtype = req.pid_pasazera;
+            resp.numer_kasy = numer_kasy;
+            resp.sukces = 0;
+            resp.brak_srodkow = 0;
+            // BLOKUJĄCE wysylanie odpowiedzi
+            while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
+                if (errno == EINTR) continue;
+                break;
+            }
         }
     }
     log_print(KOLOR_KASA, tag, "Zamknieta. Obsluzono: %d. PID=%d", obsluzonych, getpid());
