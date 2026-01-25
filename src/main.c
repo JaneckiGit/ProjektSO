@@ -6,10 +6,10 @@
 
 int main(int argc, char *argv[]) {
     //Domyslne parametry symulacji
-    int N = 5;//Liczba autobusow
-    int P = 10;//Pojemnosc
-    int R = 3;//Rowery
-    int T = 5000;//Postoj w milisekundach
+    int N = 1;//Liczba autobusow
+    int P = 50;//Pojemnosc
+    int R = 10;//Rowery
+    int T = 100;//Postoj w milisekundach
     int K = 1;//Liczba kas
 
     //parsowanie argumentow

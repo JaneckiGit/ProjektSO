@@ -1,7 +1,7 @@
 //wspolne definicje i struktury
 #ifndef COMMON_H
 #define COMMON_H
-#define KASA_QUEUE_SIZE 1000
+#define KASA_QUEUE_SIZE 800
 
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -25,7 +25,7 @@
 
 //Stałe konfiguracyjne (MAX_BUSES, MAX_CAPACITY)
 #define MAX_BUSES           50//Maksymalna liczba autobusow
-#define MAX_CAPACITY        200//Maksymalna pojemnosc autobusu
+#define MAX_CAPACITY        200000//Maksymalna pojemnosc autobusu
 #define MAX_REGISTERED      100000//Maksymalna liczba zarejestrowanych pasazerow
 #define MAX_KASY            10//Maksymalna liczba kas biletowych
 

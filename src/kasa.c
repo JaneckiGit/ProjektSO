@@ -3,6 +3,8 @@
 //Komunikacja przez kolejkę komunikatow msg_kasa_id
 #include "common.h"
 #include "kasa.h"
+#include <sys/prctl.h>
+
 
 //Flaga sygnalow kasy
 static volatile sig_atomic_t kasa_running = 1;
@@ -12,6 +14,9 @@ static void handler_kasa(int sig) {
     if (sig == SIGINT || sig == SIGTERM || sig == SIGQUIT) {
         kasa_running = 0;
     }
+}
+static void handler_alarm(int sig) {
+    (void)sig;
 }
 //Glowna funkcja kasy biletowej
 void proces_kasa(int numer_kasy) {
@@ -28,6 +33,12 @@ void proces_kasa(int numer_kasy) {
     sigaction(SIGTERM, &sa, NULL);
     sigaction(SIGQUIT, &sa, NULL);
 
+    struct sigaction sa_alrm;
+    memset(&sa_alrm, 0, sizeof(sa_alrm));
+    sa_alrm.sa_handler = handler_alarm;
+    sa_alrm.sa_flags = 0;
+    sigemptyset(&sa_alrm.sa_mask);
+    sigaction(SIGALRM, &sa_alrm, NULL);
     char tag[16];//tag do logow
     snprintf(tag, sizeof(tag), "KASA %d", numer_kasy);
 
@@ -64,11 +75,19 @@ void proces_kasa(int numer_kasy) {
             resp.numer_kasy = numer_kasy;
             resp.sukces = 0;
             resp.brak_srodkow = 0;
-            //BLOKUJĄCE wysylanie 
+            //BLOKUJĄCE wysylanie z timeout
+            int proby = 0;
+            alarm(2);
             while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
-                if (errno == EINTR) continue;
+                if (errno == EINTR) {
+                    proby++;
+                    if (proby >= 2 || !kasa_running || !shm->symulacja_aktywna) break;
+                    alarm(2);
+                    continue;
+                }
                 break;
             }
+            alarm(0);
             continue;
         }
         log_print(KOLOR_KASA, tag, "Obsluguje PAS %d (wiek=%d, biletow=%d)", req.id_pasazera, req.wiek, req.ile_biletow);
@@ -80,10 +99,22 @@ void proces_kasa(int numer_kasy) {
             resp.sukces = 0;
             resp.brak_srodkow = 1;
             // BLOKUJĄCE wysyłanie 
+            int proby = 0;
+            alarm(2);
             while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
-                if (errno == EINTR) continue;
+                if (errno == EINTR) {
+                    proby++;
+                    if (proby >= 2 || !kasa_running || !shm->symulacja_aktywna) break;
+                    alarm(2);
+                    continue;
+                }
                 break;
             }
+            alarm(0);
+            while (semop(sem_id, &shm_lock, 1) == -1 && errno == EINTR);
+            shm->obsluzonych_kasa[numer_kasy - 1]++;
+            while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
+            obsluzonych++;
             log_print(KOLOR_KASA, tag, "Odmowa sprzedazy PAS %d - BRAK SRODKOW", req.id_pasazera);
             continue;
         }
@@ -103,10 +134,18 @@ void proces_kasa(int numer_kasy) {
         resp.sukces = 1;
         resp.brak_srodkow = 0;
         //BLOKUJĄCE wysylanie 
-        while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
-            if (errno == EINTR) continue;
-            break;
-        }
+        int proby = 0;
+            alarm(2);
+            while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
+                if (errno == EINTR) {
+                    proby++;
+                    if (proby >= 2 || !kasa_running || !shm->symulacja_aktywna) break;
+                    alarm(2);
+                    continue;
+                }
+                break;
+            }
+            alarm(0);
         log_print(KOLOR_KASA, tag, "Sprzedano %d bilet(y) PAS %d",
                   req.ile_biletow, req.id_pasazera);
         obsluzonych++;
@@ -123,10 +162,18 @@ void proces_kasa(int numer_kasy) {
             resp.sukces = 0;
             resp.brak_srodkow = 0;
             // BLOKUJĄCE wysylanie odpowiedzi
+            int proby = 0;
+            alarm(2);
             while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
-                if (errno == EINTR) continue;
+                if (errno == EINTR) {
+                    proby++;
+                    if (proby >= 2 || !kasa_running || !shm->symulacja_aktywna) break;
+                    alarm(2);
+                    continue;
+                }
                 break;
             }
+            alarm(0);
         }
     }
     log_print(KOLOR_KASA, tag, "Zamknieta. Obsluzono: %d. PID=%d", obsluzonych, getpid());
@@ -134,6 +181,7 @@ void proces_kasa(int numer_kasy) {
     exit(0);
 }
 int main(int argc, char *argv[]) {
+    //prctl(PR_SET_PDEATHSIG, SIGKILL);
     if (argc < 2) { 
         fprintf(stderr, "Uzycie: %s <numer_kasy>\n", argv[0]);
         exit(1); 
