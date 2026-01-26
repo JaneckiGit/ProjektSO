@@ -145,7 +145,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->rowery_zajete = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         
-        struct sembuf signal_bus = {SEM_BUS_SIGNAL, 100, 0};
+        struct sembuf signal_bus = {SEM_BUS_SIGNAL, 10, 0};
         semop(sem_id, &signal_bus, 1);
         
         log_print(KOLOR_BUS, tag, "[Kurs #%d] Na przystanku. PID=%d, Miejsca: 0/%d, Rowery: 0/%d",

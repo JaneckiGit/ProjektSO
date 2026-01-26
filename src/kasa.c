@@ -51,7 +51,6 @@ void proces_kasa(int numer_kasy) {
     //operacje na semaforach
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
-    //struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};  // NOWY
 
     int obsluzonych = 0;//liczba obsluzonych pasazerow
     //time_t obsluga_start, obsluga_koniec;  //do mierzenia czasu obslugi

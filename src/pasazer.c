@@ -44,23 +44,23 @@ static int wyslij_bilet(SharedData *shm, int id_pas, int wiek, int czy_rower, in
     bilet.ma_bilet = ma_bilet;
     bilet.id_dziecka = id_dziecka;
     bilet.wiek_dziecka = wiek_dziecka;
-    //nieblokujace wysylanie z retry przy przepelnieniu kolejki
-    int retry = 0;
-    while (retry < 5) {  
-        if (msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), IPC_NOWAIT) == 0) {
-            return 0; 
-        }if (errno == EAGAIN) {
-            //usleep(10000);
-            //sched_yield();
-            retry++;
-            if (!shm->bus_na_przystanku || !shm->symulacja_aktywna) {
-                return -1;}
-        } else if (errno == EINTR) {
-            continue;
-        } else {
-            return -1; 
+    while (1) {
+        if (!shm->bus_na_przystanku || !shm->symulacja_aktywna) {
+            return -1;
         }
-    }return -1; 
+        alarm(2);
+        int ret = msgsnd(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), 0);
+        alarm(0);
+        if (ret == 0) return 0;  // Wysłano!
+        if (errno == EINTR) {
+            // Timeout - sprawdź warunki
+            if (!shm->bus_na_przystanku || !shm->symulacja_aktywna) {
+                return -1;
+            }
+            continue;
+        }
+        return -1;
+    }
 }
 //glowna petla oczekiwania na autobus
 //pasazer trzyma semafor drzwi az do otrzymania odpowiedzi zapobiega duplikatom
@@ -440,136 +440,89 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         log_print(KOLOR_KASA, "KASA", "VIP PAS %d (wiek=%d) - Wczesniej wykupiony bilet", id_pas, wiek);
         return 1;
     }
-    //Zwykły pasażer nieskończona pętla az do sukcesu lub konca symulacji
-    int proba = 0;
+    int numer_kasy = losuj(1, shm->param_K);
+    log_print(KOLOR_PAS, tag, "Kolejka do KASA %d. PID=%d", numer_kasy, getpid());
+    {
+        KasaResponse old;
+        while (msgrcv(msg_kasa_id, &old, sizeof(KasaResponse) - sizeof(long), getpid(), IPC_NOWAIT) != -1);
+    }
+    struct sembuf zajmij_straznik = {SEM_KASA_STRAZNIK, -1, 0};
+    struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};
+    struct timespec ts = {1, 0};
+    while (1) {
+        if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) return -1;
+        if (semtimedop(sem_id, &zajmij_straznik, 1, &ts) == 0) break;
+
+        if (errno == EAGAIN || errno == EINTR) continue;
+        return -1;
+    }
+    KasaRequest req;
+    req.mtype = numer_kasy;
+    req.pid_pasazera = getpid();
+    req.id_pasazera = id_pas;
+    req.wiek = wiek;
+    req.ile_biletow = ile_biletow;
+    
     while (1) {
         if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
-            return -1;
-        }
-        int numer_kasy = losuj(1, shm->param_K);
-        if (proba == 0) {
-            log_print(KOLOR_PAS, tag, "Kolejka do KASA %d. PID=%d", numer_kasy, getpid());
-        } else {
-            log_print(KOLOR_PAS, tag, "Wraca do kolejki (proba %d) - KASA %d. PID=%d", proba+1, numer_kasy, getpid());
-        }
-        proba++;
-        //Zajmij miejsce w kolejce (strażnik) 
-        struct sembuf zajmij_straznik = {SEM_KASA_STRAZNIK, -1, SEM_UNDO};
-        struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};
-        struct timespec ts_straznik = {0, 200000};
-        int straznik_ok = 0;
-        while (!straznik_ok) {
-            if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) return -1;
-            if (semtimedop(sem_id, &zajmij_straznik, 1, &ts_straznik) == 0) {
-                straznik_ok = 1;
-                break;
-            }
-            if (errno == EAGAIN) { 
-                continue;
-            }
-            if (errno == EINTR) {
-                continue;
-            }
-            break;
-        }
-        if (!straznik_ok) continue;  
-        //sprawdź ponownie po zdobyciu strażnika
-        if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
             semop(sem_id, &zwolnij_straznik, 1);
             return -1;
         }
-        KasaRequest req;
-        req.mtype = numer_kasy;
-        req.pid_pasazera = getpid();
-        req.id_pasazera = id_pas;
-        req.wiek = wiek;
-        req.ile_biletow = ile_biletow;
+        if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0) == 0) {
+            break;
+        }
         
-        int wyslano = 0;
-        while (!wyslano) {
-            if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
-                semop(sem_id, &zwolnij_straznik, 1);
+        if (errno == EINTR) continue;
+        
+        if (errno == EIDRM || errno == EINVAL) {
+            shmdt(shm);
+            exit(0);
+        }
+        semop(sem_id, &zwolnij_straznik, 1);
+        return -1;
+    }
+    //semop(sem_id, &zwolnij_straznik, 1);
+    KasaResponse resp;
+    int timeout_count = 0;
+    while (1) {
+        if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
+            msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), IPC_NOWAIT);
+            return -1;
+        }
+        
+        alarm(5);
+        ssize_t ret = msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), 0);
+        alarm(0);
+        if (ret != -1) break;
+        if (errno == EINTR) {
+            timeout_count++;
+            if (timeout_count >= 24) {
+                msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), IPC_NOWAIT);
                 return -1;
             }
-            alarm(2);
-            int ret = msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0);
-            alarm(0);
-            if (ret == 0) {
-                wyslano = 1;
-                break;
-            }
-            if (errno == EINTR) {
-                if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
-                    semop(sem_id, &zwolnij_straznik, 1);
-                    return -1;
-                }
-                continue;  // Spróbuj ponownie wysłać
-            }
-            if (errno == EIDRM || errno == EINVAL) {
-                shmdt(shm);
-                exit(0);
-            }
-            // Inny błąd - zwolnij i wróć do kolejki
-            break;
-        }
-        
-        if (!wyslano) {
-            semop(sem_id, &zwolnij_straznik, 1);
-            continue;
-        }
-        // Czekaj na odpowiedź od kasy - BLOKUJĄCO z obsługą sygnałów
-        KasaResponse resp;
-        memset(&resp, 0, sizeof(resp));
-        int odebrano = 0;
-        
-        while (!odebrano) {
-            alarm(2);  // Timeout 2 sekundy
-            ssize_t ret = msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), 0);
-            alarm(0);
-            
-            if (ret != -1) {
-                odebrano = 1;
-                break;
-            }
-            
-            if (errno == EINTR) {
-                // Przerwane sygnałem - sprawdź warunki
-                if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
-                    // Koniec symulacji - zwolnij strażnika i wyjdź
-                    return -1;
-                }
-                // Timeout ale symulacja trwa - czekaj dalej
-                continue;
-            }
-            
-            if (errno == EIDRM || errno == EINVAL) {
-                // Kolejka usunięta - koniec
-                shmdt(shm);
-                exit(0);
-            }
-            break;
-        }
-        
-        
-        // Jeśli nie odebrano - już zwolniliśmy wyżej, wróć do kolejki
-        if (!odebrano) {
             continue;
         }
         
-        // Obsłuż odpowiedź
-        if (resp.sukces == 0) {
-            if (resp.brak_srodkow) {
-                log_print(KOLOR_PAS, tag, "BRAK SRODKOW - idzie bez biletu. PID=%d", getpid());
-                return 0;
-            }
-            continue;
+        if (errno == EIDRM || errno == EINVAL) {
+            shmdt(shm);
+            exit(0);
         }
-        
+        return -1;
+    }
+    
+    if (resp.sukces == 1) {
         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
                   ile_biletow, resp.numer_kasy, getpid());
         return 1;
-    } 
-}  
+    }
+    
+    if (resp.brak_srodkow) {
+        log_print(KOLOR_PAS, tag, "BRAK SRODKOW - idzie bez biletu. PID=%d", getpid());
+        return 0;
+    }
+    
+    return -1;
+}
 //proces zwyklego pasazera (dorosly 9-80 lat, bez dziecka)
 void proces_pasazer(int id_pas) {
     srand(time(NULL) ^ getpid());

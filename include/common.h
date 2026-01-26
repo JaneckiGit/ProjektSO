@@ -1,7 +1,7 @@
 //wspolne definicje i struktury
 #ifndef COMMON_H
 #define COMMON_H
-#define KASA_QUEUE_SIZE 800
+#define KASA_QUEUE_SIZE 500
 
 #include <sys/types.h>
 #include <sys/ipc.h>
