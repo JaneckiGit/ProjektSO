@@ -47,6 +47,8 @@ static void init_semafory(void) {
     semctl(sem_id, SEM_LOG, SETVAL, arg);//SEM_LOG - sekcja krytyczna logow
     semctl(sem_id, SEM_SHM, SETVAL, arg);// SEM_SHM - ochrona pamięci dzielonej
     semctl(sem_id, SEM_KASA_STRAZNIK, SETVAL, arg);// SEM_KASA_STRAZNIK - ochrona kas biletowych
+    arg.val = 0;  
+    semctl(sem_id, SEM_BUS_SIGNAL, SETVAL, arg);
 }
 //Sprzatanie zasobow IPC
 //wywolywane przy zakonczeniu symulacji

@@ -144,7 +144,10 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->miejsca_zajete = 0;
         shm->rowery_zajete = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
-
+        
+        struct sembuf signal_bus = {SEM_BUS_SIGNAL, 100, 0};
+        semop(sem_id, &signal_bus, 1);
+        
         log_print(KOLOR_BUS, tag, "[Kurs #%d] Na przystanku. PID=%d, Miejsca: 0/%d, Rowery: 0/%d",
                   kursow, getpid(), pojemnosc, rowery);
 
@@ -297,6 +300,9 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->aktualny_bus_id = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         
+        union semun { int val; } arg;
+        arg.val = 0;
+        semctl(sem_id, SEM_BUS_SIGNAL, SETVAL, arg);
         //Odpowiedz wszystkim nieobsluzonym pasazerom ODMOW
         BiletMsg old;
         OdpowiedzMsg odmowa;
@@ -319,7 +325,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         log_print(KOLOR_BUS, tag, "Zamykam drzwi. PID=%d", getpid());
         struct sembuf zablokuj_normal = {SEM_DOOR_NORMAL, -1, SEM_UNDO};
         struct sembuf zablokuj_rower = {SEM_DOOR_ROWER, -1, SEM_UNDO};
-        struct timespec ts_drzwi = {0, 50000000};  
+        struct timespec ts_drzwi = {0, 50000000};
         int zamknieto_normal = 0, zamknieto_rower = 0;
         for (int proba = 0; proba < 5; proba++) {
             if (!zamknieto_normal) {

@@ -45,7 +45,8 @@
 #define SEM_LOG          3 //Log
 #define SEM_SHM          4 // pamiec dzielona
 #define SEM_KASA_STRAZNIK   5 // ochrona kas biletowych
-#define SEM_COUNT        6 // liczba semaforow przed kasami
+#define SEM_BUS_SIGNAL  6 // sygnal autobusow
+#define SEM_COUNT        7 // liczba semaforow 
 
 //Pamiec dzielona miedzy wszystkie procesy
 //Dostęp chroniony przez SEM_SHM

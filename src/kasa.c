@@ -51,7 +51,7 @@ void proces_kasa(int numer_kasy) {
     //operacje na semaforach
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
-    struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};  // NOWY
+    //struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};  // NOWY
 
     int obsluzonych = 0;//liczba obsluzonych pasazerow
     //time_t obsluga_start, obsluga_koniec;  //do mierzenia czasu obslugi
@@ -63,10 +63,13 @@ void proces_kasa(int numer_kasy) {
         //BLOKUJĄCE odbieranie 
         ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), numer_kasy, 0);
         if (ret == -1) {
-            if (errno == EINTR) continue;  //Przerwane sygnałem sprawdzenie flagi
-            break;  //Inny blad - zakończ
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
         }
-        // ZWOLNIJ STRAŻNIKA (miejsce w kolejce zwolnione!)
+        // ZWOLNIJ STRAŻNIKA - miejsce w kolejce zwolnione!
+        struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};
         semop(sem_id, &zwolnij_straznik, 1);
         //Jesli dworzec zamkniety - odrzuć
         if (!shm->dworzec_otwarty) {
@@ -155,7 +158,7 @@ void proces_kasa(int numer_kasy) {
         KasaRequest req;
         while (msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
                       numer_kasy, IPC_NOWAIT) != -1) {
-            semop(sem_id, &zwolnij_straznik, 1);
+            //semop(sem_id, &zwolnij_straznik, 1);
             KasaResponse resp;
             resp.mtype = req.pid_pasazera;
             resp.numer_kasy = numer_kasy;
