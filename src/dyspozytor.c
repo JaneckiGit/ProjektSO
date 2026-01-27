@@ -46,8 +46,8 @@ static void init_semafory(void) {
     semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);//SEM_BUS_STOP - tylko jeden autobus na peronie
     semctl(sem_id, SEM_LOG, SETVAL, arg);//SEM_LOG - sekcja krytyczna logow
     semctl(sem_id, SEM_SHM, SETVAL, arg);// SEM_SHM - ochrona pamięci dzielonej
-    semctl(sem_id, SEM_KASA_STRAZNIK, SETVAL, 10);// SEM_KASA_STRAZNIK 
-    arg.val = 0;  
+    semctl(sem_id, SEM_KASA_STRAZNIK, SETVAL, 200);// SEM_KASA_STRAZNIK 
+    arg.val = 1;  
     semctl(sem_id, SEM_BUS_SIGNAL, SETVAL, arg);
 }
 //Sprzatanie zasobow IPC

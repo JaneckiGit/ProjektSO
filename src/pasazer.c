@@ -72,8 +72,8 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     pid_t ostatni_odrzucajacy_bus = 0;
     
-    struct sembuf wait_bus = {SEM_BUS_SIGNAL, -1, 0};
-    struct timespec ts_bus = {0, 1000000};
+    struct sembuf wait_bus = {SEM_BUS_SIGNAL, 0, 0};  
+    struct timespec ts_bus = {0, 1000000}; 
     
     while (shm->symulacja_aktywna && shm->dworzec_otwarty) {
         //wyczysc stare odpowiedzi z poprzednich prob (odmowy od innych autobusow)
@@ -122,7 +122,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             struct sembuf wyjdz_rower = {SEM_DOOR_ROWER, 1, SEM_UNDO};
             
             //zajmij NORMALNE drzwi z timeout
-            struct timespec timeout_sem = {0, 1000000};  
+            struct timespec timeout_sem = {0, 10000000};  
             int sem_ok = 0;
             while (!sem_ok) {
                 if (semtimedop(sem_id, &wejdz_normal, 1, &timeout_sem) == 0) {
@@ -315,7 +315,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             struct sembuf wyjdz = {SEM_DOOR_NORMAL, 1,SEM_UNDO};
             
             //Zajmij semafor blok z timeout
-            struct timespec timeout_sem = {0, 1000000};  
+            struct timespec timeout_sem = {0, 10000000};  
             int sem_ok = 0;
             while (!sem_ok) {
                 if (semtimedop(sem_id, &wejdz, 1, &timeout_sem) == 0) {

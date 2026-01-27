@@ -7,8 +7,8 @@
 int main(int argc, char *argv[]) {
     //Domyslne parametry symulacji
     int N = 1;//Liczba autobusow
-    int P = 50;//Pojemnosc
-    int R = 10;//Rowery
+    int P = 100;//Pojemnosc
+    int R = 20;//Rowery
     int T = 100;//Postoj w milisekundach
     int K = 1;//Liczba kas
 

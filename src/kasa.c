@@ -63,7 +63,10 @@ void proces_kasa(int numer_kasy) {
         ssize_t ret = msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), numer_kasy, 0);
         if (ret == -1) {
             if (errno == EINTR) {
+            if (!kasa_running || !shm->symulacja_aktywna || !shm->dworzec_otwarty) break; 
+            {
                 continue;
+            }
             }
             break;
         }
