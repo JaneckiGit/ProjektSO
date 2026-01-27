@@ -215,18 +215,18 @@ Główna funkcja `proces_dyspozytor()` (linia 142) odpowiada za:
 - Główną pętlę obsługi sygnałów SIGUSR1/SIGUSR2
 - Graceful shutdown i cleanup zasobów IPC
 
-### 4.2 Proces autobusu - [bus.c](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L32)
+### 4.2 Proces autobusu - [bus.c](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L29)
 
-Główna funkcja `proces_autobus()` (linia 32) realizuje:
+Główna funkcja `proces_autobus()` (linia 29) realizuje:
 - Losowanie indywidualnego czasu trasy Ti
 - Konfigurację handlerów sygnałów
 - Główną pętlę kursów (jazda na dworzec, postój, przyjmowanie pasażerów, odjazd)
 - Weryfikację biletów i kontrolę miejsc
 - Obsługę wymuszonego odjazdu (SIGUSR1)
 
-### 4.3 Proces kasy - [kasa.c](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L22)
+### 4.3 Proces kasy - [kasa.c](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L20)
 
-Główna funkcja `proces_kasa()` (linia 22) realizuje:
+Główna funkcja `proces_kasa()` (linia 20) realizuje:
 - Konfigurację handlerów sygnałów
 - Główną pętlę odbierania żądań od pasażerów (blokujące msgrcv)
 - 2% szans na odmowę sprzedaży (brak środków pasażera)
