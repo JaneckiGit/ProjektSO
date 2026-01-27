@@ -5,10 +5,8 @@
 #include "kasa.h"
 #include <sys/prctl.h>
 
-
 //Flaga sygnalow kasy
 static volatile sig_atomic_t kasa_running = 1;
-
 //Handler sygnalow kasy
 static void handler_kasa(int sig) {
     if (sig == SIGINT || sig == SIGTERM || sig == SIGQUIT) {
@@ -70,10 +68,10 @@ void proces_kasa(int numer_kasy) {
             }
             break;
         }
-        // ZWOLNIJ STRAŻNIKA - miejsce w kolejce zwolnione!
+        //zwolnij straznika miejsce w kolejce zwolnione
         struct sembuf zwolnij_straznik = {SEM_KASA_STRAZNIK, 1, 0};
         semop(sem_id, &zwolnij_straznik, 1);
-        //Jesli dworzec zamkniety - odrzuć
+        //Jesli dworzec zamkniety to odrzuć
         if (!shm->dworzec_otwarty) {
             KasaResponse resp;
             resp.mtype = req.pid_pasazera;
@@ -100,11 +98,11 @@ void proces_kasa(int numer_kasy) {
         resp.mtype = req.pid_pasazera;
         resp.numer_kasy = numer_kasy;
         //2% szans na odmowe sprzedazy z powodu braku srodkow pasazera
+        // if (1) { //TEST brak srodkow
         if (losuj(1, 100) <= 2) {
             resp.sukces = 0;
-            resp.brak_srodkow = 1;
-            // BLOKUJĄCE wysyłanie 
-            int proby = 0;
+            resp.brak_srodkow = 1; 
+            int proby = 0;//blokujace wysyłanie
             alarm(2);
             while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
                 if (errno == EINTR) {
@@ -123,8 +121,7 @@ void proces_kasa(int numer_kasy) {
             log_print(KOLOR_KASA, tag, "Odmowa sprzedazy PAS %d - BRAK SRODKOW", req.id_pasazera);
             continue;
         }
-        //aktualizacja statystyk
-        while (semop(sem_id, &shm_lock, 1) == -1) {
+        while (semop(sem_id, &shm_lock, 1) == -1) {//aktualizacja statystyk
             if (errno == EINTR) continue;
             break;
         }
@@ -138,8 +135,7 @@ void proces_kasa(int numer_kasy) {
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         resp.sukces = 1;
         resp.brak_srodkow = 0;
-        //BLOKUJĄCE wysylanie 
-        int proby = 0;
+        int proby = 0;//blokujace wysylanie 
             alarm(2);
             while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
                 if (errno == EINTR) {
@@ -155,8 +151,7 @@ void proces_kasa(int numer_kasy) {
                   req.ile_biletow, req.id_pasazera);
         obsluzonych++;
     }
-    // Cleanup - msgrcv 
-    {
+    {// Cleanup - msgrcv 
         KasaRequest req;
         while (msgrcv(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 
                       numer_kasy, IPC_NOWAIT) != -1) {
@@ -166,8 +161,7 @@ void proces_kasa(int numer_kasy) {
             resp.numer_kasy = numer_kasy;
             resp.sukces = 0;
             resp.brak_srodkow = 0;
-            // BLOKUJĄCE wysylanie odpowiedzi
-            int proby = 0;
+            int proby = 0;//blokujacewysylanie odpowiedzi
             alarm(2);
             while (msgsnd(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), 0) == -1) {
                 if (errno == EINTR) {

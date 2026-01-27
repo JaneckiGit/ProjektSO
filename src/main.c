@@ -9,7 +9,7 @@ int main(int argc, char *argv[]) {
     int N = 1;//Liczba autobusow
     int P = 100;//Pojemnosc
     int R = 20;//Rowery
-    int T = 100;//Postoj w milisekundach
+    int T = 10;//Postoj w milisekundach
     int K = 1;//Liczba kas
 
     //parsowanie argumentow

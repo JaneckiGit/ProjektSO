@@ -1,7 +1,7 @@
 //wspolne definicje i struktury
 #ifndef COMMON_H
 #define COMMON_H
-#define KASA_QUEUE_SIZE 500
+//#define KASA_QUEUE_SIZE 200 
 
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -44,8 +44,8 @@
 #define SEM_BUS_STOP     2 //peron - tylko jeden autobus
 #define SEM_LOG          3 //Log
 #define SEM_SHM          4 // pamiec dzielona
-#define SEM_KASA_STRAZNIK   5 // ochrona kas biletowych
-#define SEM_BUS_SIGNAL  6 // sygnal autobusow
+#define SEM_KASA_STRAZNIK 5 // ochrona kas biletowych
+#define SEM_BUS_SIGNAL   6 // sygnal autobusow
 #define SEM_COUNT        7 // liczba semaforow 
 
 //Pamiec dzielona miedzy wszystkie procesy

@@ -74,7 +74,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
     
     struct sembuf wait_bus = {SEM_BUS_SIGNAL, 0, 0};  
     struct timespec ts_bus = {0, 1000000}; 
-    
     while (shm->symulacja_aktywna && shm->dworzec_otwarty) {
         //wyczysc stare odpowiedzi z poprzednich prob (odmowy od innych autobusow)
         {
@@ -97,7 +96,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             }
             continue;
         }
-
         pid_t bus_pid = shm->aktualny_bus_pid;
         //jesli to ten sam autobus ktory nas odrzucil to wtedy pasazer czeka az odjedzie
         if (bus_pid == ostatni_odrzucajacy_bus) {
@@ -141,7 +139,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 goto koniec;
             }
             if (!sem_ok) continue;
-            
             //sprawdz czy autobus nie odjechal
             if (!shm->bus_na_przystanku || shm->aktualny_bus_pid != bus_pid) {
                 semop(sem_id, &wyjdz_normal, 1);
@@ -223,7 +220,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 odp.przyjety = 0;
                 break;
             }
-            //Zwolnij semafory ATOMOWO
             semop(sem_id, &wyjdz_rower, 1);
             semop(sem_id, &wyjdz_normal, 1);
 
@@ -252,8 +248,7 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 ostatni_odrzucajacy_bus = bus_pid;
             }
         } else if (czy_vip) {
-            //VIP omija semafor drzwi, ma priorytet w kolejce
-            log_print(KOLOR_PAS, tag, "VIP - priorytet, omija kolejke! PID=%d", getpid());
+            log_print(KOLOR_PAS, tag, "VIP - priorytet, omija kolejke! PID=%d", getpid());//VIP omija semafor drzwi, ma priorytet w kolejce
             //sprawdz czy autobus jeszcze jest
             if (!shm->bus_na_przystanku || shm->aktualny_bus_pid != bus_pid) {
                 //usleep(10000); //lub sched_yield();
@@ -272,7 +267,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 alarm(1);
                 ret = msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), getpid(), 0);
                 alarm(0);
-                
                 if (ret != -1) {
                     odebrano = 1;
                     break;
@@ -313,7 +307,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             //Zwykly pasazer BEZ ROWERU
             struct sembuf wejdz = {SEM_DOOR_NORMAL, -1,SEM_UNDO};
             struct sembuf wyjdz = {SEM_DOOR_NORMAL, 1,SEM_UNDO};
-            
             //Zajmij semafor blok z timeout
             struct timespec timeout_sem = {0, 10000000};  
             int sem_ok = 0;
@@ -354,7 +347,6 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
                 alarm(1);
                 ret = msgrcv(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), getpid(), 0);
                 alarm(0);
-                
                 if (ret != -1) {
                     odebrano = 1;
                     break;
@@ -381,15 +373,13 @@ static int czekaj_na_autobus(SharedData *shm, const char *tag, int id_pas, int w
             //Zwolnij semafor
             semop(sem_id, &wyjdz, 1);            
             if (odp.przyjety == 1) {
-                //pasazer wsiadl co konczy jego proces
-                while (semop(sem_id, &shm_lock, 1) == -1 && errno == EINTR);
+                while (semop(sem_id, &shm_lock, 1) == -1 && errno == EINTR);//pasazer wsiadl co konczy jego proces
                 shm->pasazerow_czeka -= ile_osob;
                 while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
                 shmdt(shm);
                 exit(0); 
             } else {
-                //Sprawdź czy wyjść z powodu zamknięcia dworca
-                if (!shm->dworzec_otwarty || !shm->symulacja_aktywna) {
+                if (!shm->dworzec_otwarty || !shm->symulacja_aktywna) {//sprawdz czy wyjsc jak dworzec zamkniety
                     goto koniec;
                 }
                 //ODMOWA
@@ -429,7 +419,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
             while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
             return -1;
         }
-        log_print(KOLOR_PAS, tag, "VIP - omija kase! PID=%d", getpid());
+        log_print(KOLOR_PAS, tag, "VIP - omija kase! PID=%d", getpid());//VIP omija kase
         if (shm->registered_count < MAX_REGISTERED) {
             shm->registered_pids[shm->registered_count] = getpid();
             shm->registered_wiek[shm->registered_count] = wiek;
@@ -440,7 +430,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         log_print(KOLOR_KASA, "KASA", "VIP PAS %d (wiek=%d) - Wczesniej wykupiony bilet", id_pas, wiek);
         return 1;
     }
-    int numer_kasy = losuj(1, shm->param_K);
+    int numer_kasy = losuj(1, shm->param_K);//losuj kase
     log_print(KOLOR_PAS, tag, "Kolejka do KASA %d. PID=%d", numer_kasy, getpid());
     {
         KasaResponse old;
@@ -462,8 +452,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
     req.id_pasazera = id_pas;
     req.wiek = wiek;
     req.ile_biletow = ile_biletow;
-    
-    while (1) {
+    while (1) {//wysylanie zapytania do kasy
         if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
             semop(sem_id, &zwolnij_straznik, 1);
             return -1;
@@ -471,9 +460,7 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         if (msgsnd(msg_kasa_id, &req, sizeof(KasaRequest) - sizeof(long), 0) == 0) {
             break;
         }
-        
-        if (errno == EINTR) continue;
-        
+        if (errno == EINTR) continue; // ponow
         if (errno == EIDRM || errno == EINVAL) {
             shmdt(shm);
             exit(0);
@@ -482,18 +469,17 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
         return -1;
     }
     //semop(sem_id, &zwolnij_straznik, 1);
-    KasaResponse resp;
+    KasaResponse resp; //odpowiedz z kasy
     int timeout_count = 0;
     while (1) {
         if (!shm->symulacja_aktywna || !shm->dworzec_otwarty) {
             msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), IPC_NOWAIT);
             return -1;
         }
-        
         alarm(5);
         ssize_t ret = msgrcv(msg_kasa_id, &resp, sizeof(KasaResponse) - sizeof(long), getpid(), 0);
         alarm(0);
-        if (ret != -1) break;
+        if (ret != -1) break;//odebrano odpowiedz
         if (errno == EINTR) {
             timeout_count++;
             if (timeout_count >= 24) {
@@ -502,28 +488,24 @@ static int kup_bilet(SharedData *shm, const char *tag, int id_pas, int wiek, int
             }
             continue;
         }
-        
-        if (errno == EIDRM || errno == EINVAL) {
+        if (errno == EIDRM || errno == EINVAL) {//kolejka skasowana
             shmdt(shm);
             exit(0);
         }
         return -1;
     }
-    
     if (resp.sukces == 1) {
         log_print(KOLOR_PAS, tag, "Kupil %d bilet(y) w KASA %d. PID=%d", 
                   ile_biletow, resp.numer_kasy, getpid());
         return 1;
     }
-    
     if (resp.brak_srodkow) {
         log_print(KOLOR_PAS, tag, "BRAK SRODKOW - idzie bez biletu. PID=%d", getpid());
         return 0;
     }
-    
     return -1;
 }
-//proces zwyklego pasazera (dorosly 9-80 lat, bez dziecka)
+//proces zwyklego pasazera (dorosly 8-80 lat, bez dziecka)
 void proces_pasazer(int id_pas) {
     srand(time(NULL) ^ getpid());
 
@@ -578,11 +560,8 @@ void proces_pasazer(int id_pas) {
     }
     log_print(KOLOR_PAS, tag, "Wszedl na dworzec (wiek=%d%s)%s. PID=%d", 
               wiek, czy_rower ? ", rower" : "", czy_vip ? " VIP" : "", getpid());
-
     int ma_bilet = kup_bilet(shm, tag, id_pas, wiek, czy_vip, 1);
-    
-    //ma_bilet odpowiednio 1=kupiony 0=brak srodkow -1=dworzec zamkniety
-    if (ma_bilet == -1) {
+    if (ma_bilet == -1) {//ma_bilet odpowiednio 1=kupiony 0=brak srodkow -1=dworzec zamkniety
         log_print(KOLOR_PAS, tag, "Dworzec zamkniety - opuszczam. PID=%d", getpid());
         if (semop(sem_id, &shm_lock, 1) == 0) {
             shm->pasazerow_czeka--;
@@ -624,7 +603,6 @@ void proces_rodzic_z_dzieckiem(int id_pas) {
     int czy_vip = 0;//rodzic nie jest VIPem
     int id_dziecka = id_pas;
     int wiek_dziecka = losuj(1, 7);
-
     struct sembuf shm_lock = {SEM_SHM, -1, SEM_UNDO};
     struct sembuf shm_unlock = {SEM_SHM, 1, SEM_UNDO};
     
@@ -725,9 +703,9 @@ void proces_generator(void) {
     signal(SIGCHLD, SIG_IGN);
     srand(time(NULL) ^ getpid());
     int id_pas = 0;
-    int n = 10000;
-    while (n--) {
-    //while (1) {
+    int n = 10000; //liczba pasazerow do wygenerowania
+    while (n--) { //generuj n paszerow 
+    //while (1) { //nieograniczona liczba pasazerow
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s == (void *)-1) exit(1);
         bool aktywna = s->symulacja_aktywna;
@@ -737,7 +715,6 @@ void proces_generator(void) {
             //Dworzec zamkniety zakoncz NATYCHMIAST
             exit(0);
         }
-        
         //losowanie typu pasazera i tworzenie procesu
         int los = losuj(1, 100);
         char arg_id[16];
@@ -749,6 +726,7 @@ void proces_generator(void) {
         }
         if (pas == 0) {//proces dziecka
             if (los <= 20) {//20% rodzic z dzieckiem
+            //if (los <= 100){//TEST -  rodzic z dzieckiem
                 execl("./bin/pasazer", "pasazer", "rodzic_z_dzieckiem", arg_id, NULL);
             } else {//80% zwykly pasazer
                 execl("./bin/pasazer", "pasazer", "normal", arg_id, NULL);

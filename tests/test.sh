@@ -27,7 +27,7 @@ test2() {
     cleanup
 }
 
-test3() {
+test3()
     echo "=== TEST 3: SIGUSR1 (N=2 P=10 R=3 T=15000 K=1) ==="
     cleanup
     $BIN 2 10 3 15000 1 &
