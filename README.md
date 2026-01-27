@@ -86,7 +86,6 @@ ProjektSO/
 │   ├── pasazer.c                  # Pasażerowie i generator
 │   └── utils.c                    # Funkcje pomocnicze
 ├── bin/                           # Pliki wykonywalne
-├── tests/                         # Skrypty testowe
 ├── Makefile
 └── raport.txt                     # Raport z symulacji
 ```
@@ -102,6 +101,7 @@ ProjektSO/
 - Na autobus może wejść maksymalnie P pasażerów
 - Miejsca na rowery ograniczone do R
 - Autobus ma dwa wejścia - normalne i rowerowe (semafory binarne)
+- 2% na odmowe sprzedaży biletu - odmowa wejścia do busa - opuszczenie dworca
 - Kierowca sprawdza bilet każdego pasażera
 - Autobus odjeżdża co T czasu lub po sygnale SIGUSR1
 - SIGUSR2 zamyka dworzec - nowi pasażerowie nie wchodzą
@@ -135,7 +135,7 @@ Wszystkie wprowadzane parametry są walidowane:
 - P musi być w zakresie 1-(MAX_CAPACITY)
 - R musi być w zakresie 0-P
 - T musi być większe od 0
-- K musi być w zakresie 1-10 (MAX_KASY)
+- K musi być w zakresie 1-MAX_KASY)
 
 ---
 
@@ -237,106 +237,234 @@ Główna funkcja `proces_kasa()` (linia 22) realizuje:
 
 **Typy pasażerów:**
 
-1. **Normal** - funkcja [`proces_pasazer()`](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L512) (linia 512): wiek 8-80 lat, 25% szans na rower, 1% szans na VIP (tylko bez roweru), kupuje 1 bilet
+1. **Normal** - funkcja [`proces_pasazer()`](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L509) (linia 509): wiek 8-80 lat, 25% szans na rower, 1% szans na VIP (tylko bez roweru), kupuje 1 bilet
 
-2. **Rodzic z dzieckiem** - funkcja [`proces_rodzic_z_dzieckiem()`](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L585) (linia 585): rodzic 18-80 lat, dziecko 1-7 lat jako wątek, kupuje 2 bilety, synchronizacja przez mutex i zmienną warunkową
+2. **Rodzic z dzieckiem** - funkcja [`proces_rodzic_z_dzieckiem()`](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L581) (linia 581): rodzic 18-80 lat, dziecko 1-7 lat jako wątek, kupuje 2 bilety, synchronizacja przez mutex i zmienną warunkową
 
-3. **Generator** - funkcja [`proces_generator()`](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L703) (linia 703): w trybie testowym 10000 pasażerów bez opóźnień, w trybie produkcyjnym nieograniczona liczba z odstępami 1-2s, 20% rodzic z dzieckiem, 80% zwykły
+3. **Generator** - funkcja [`proces_generator()`](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L702) (linia 702): w trybie testowym 10000 pasażerów bez opóźnień, w trybie produkcyjnym nieograniczona liczba z odstępami 1-2s, 20% rodzic z dzieckiem, 80% zwykły
 
 ### 4.5 Specjalne zachowania
 
 **VIP** - nie może mieć roweru, omija semafor drzwi (wchodzi bez kolejki), ma priorytet w kolejce komunikatów (mtype = bus_pid), omija kasę (ma wcześniej wykupiony bilet)
 
+```
+// najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
+ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
+if (ret == -1 && errno == ENOMSG) {
+    ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT);
+}
+```
+
 **Rowerzysta** - zajmuje semafory sekwencyjnie: najpierw DOOR_NORMAL, potem DOOR_ROWER, sprawdza czy autobus nie odjechał między zajęciem semaforów
 
+```
+if (czy_rower) {
+            //pasazer Z ROWEREM - sekwencyjnie: najpierw normalne, potem rowerowe
+            struct sembuf wejdz_normal = {SEM_DOOR_NORMAL, -1, SEM_UNDO};
+            struct sembuf wyjdz_normal = {SEM_DOOR_NORMAL, 1, SEM_UNDO};
+            struct sembuf wejdz_rower = {SEM_DOOR_ROWER, -1, SEM_UNDO};
+            struct sembuf wyjdz_rower = {SEM_DOOR_ROWER, 1, SEM_UNDO};
+            //zajmij NORMALNE drzwi z timeout
+            struct timespec timeout_sem = {0, 10000000};  
+            int sem_ok = 0;
+            while (!sem_ok) {
+                if (semtimedop(sem_id, &wejdz_normal, 1, &timeout_sem) == 0) {
+                    sem_ok = 1;
+                    break;
+                }
+                if (errno == EAGAIN) {
+                    if (!shm->dworzec_otwarty || !shm->symulacja_aktywna) goto koniec;
+                    if (!shm->bus_na_przystanku || shm->aktualny_bus_pid != bus_pid) break;
+                    continue;
+                }
+                if (errno == EINTR) {
+                    if (!shm->dworzec_otwarty || !shm->symulacja_aktywna) goto koniec;
+                    continue;
+                }
+                goto koniec;
+            }
+```
 ---
+## 5. Opis algorytmów
 
-## 5. Sekcje krytyczne kodu
+#### 5.1 Algorytm pracy autobusu
+```
+1. Losuj indywidualny czas trasy Ti
+2. Skonfiguruj handlery sygnałów (SIGUSR1, SIGTERM)
+3. PĘTLA GŁÓWNA:
+   a. Sprawdź warunki zakończenia (symulacja nieaktywna lub dworzec zamknięty i brak pasażerów w trasie)
+   b. Jedź na dworzec (czekaj czas dojazdu)
+   c. Zajmij semafor przystanku (SEM_BUS_STOP)
+   d. Ustaw flagę bus_na_przystanku = true
+   e. Sygnalizuj przyjazd (SEM_BUS_SIGNAL)
+   f. Przez czas T lub do SIGUSR1:
+      - Odbieraj bilety z kolejki (najpierw VIP, potem zwykli)
+      - Weryfikuj bilet każdego pasażera
+      - Sprawdź dostępność miejsc (normalnych i rowerowych)
+      - Wyślij odpowiedź (przyjęty/odrzucony)
+      - Jeśli pełny → natychmiastowy odjazd
+   g. Ustaw flagę bus_na_przystanku = false
+   h. Zamknij drzwi (zajmij semafory drzwi z timeout)
+   i. Odpowiedz odmownie nieobsłużonym pasażerom
+   j. Zwolnij przystanek i drzwi
+   k. Jedź do miejsca docelowego (czas Ti)
+   l. Rozładuj pasażerów (aktualizuj statystyki)
+4. Zwolnij zasoby i zakończ
+```
 
-### 5.1 Dostęp do pamięci dzielonej
+#### 5.2 Algorytm pasażera (wchodzenie do autobusu)
+
+```
+1. Wyczyść stare odpowiedzi z kolejki komunikatów
+2. PĘTLA GŁÓWNA (dopóki dworzec otwarty):
+   a. Czekaj na autobus na przystanku (semafor SEM_BUS_SIGNAL)
+   b. Jeśli autobus który odrzucił → czekaj na jego odjazd
+   c. DLA ROWERZYSTY:
+      - Zajmij semafor drzwi normalnych (z timeout)
+      - Sprawdź czy autobus nie odjechał
+      - Zajmij semafor drzwi rowerowych (z timeout)
+      - Sprawdź czy autobus nie odjechał
+   d. DLA VIP:
+      - Omijaj semafory drzwi
+   e. DLA ZWYKŁEGO:
+      - Zajmij semafor drzwi normalnych (z timeout)
+   f. Wyślij bilet do autobusu (mtype=PID dla VIP, PID+1000000 dla zwykłych)
+   g. Czekaj na odpowiedź (z timeout)
+   h. Zwolnij semafory drzwi
+   i. Jeśli przyjęty → zakończ proces (wsiadł)
+   j. Jeśli odrzucony bez biletu → opuść dworzec
+   k. Jeśli brak miejsc → zapamiętaj PID autobusu, czekaj na następny
+3. Dworzec zamknięty → opuść dworzec
+```
+
+#### 5.3 Algorytm kupowania biletu
+
+```
+1. DLA VIP:
+   a. Zablokuj pamięć dzieloną
+   b. Zarejestruj się (PID, wiek)
+   c. Zwiększ licznik sprzedanych biletów
+   d. Odblokuj pamięć dzieloną
+   e. Zwróć sukces (ma bilet z góry)
+2. DLA ZWYKŁEGO:
+   a. Wylosuj numer kasy (1-K)
+   b. Zajmij semafor strażnika (ograniczenie kolejki)
+   c. Wyślij żądanie do kasy (kolejka msg_kasa_id)
+   d. Czekaj na odpowiedź (z timeout i retry)
+   e. Jeśli sukces → zwróć 1 (ma bilet)
+   f. Jeśli brak środków → zwróć 0 (idzie bez biletu)
+   g. Jeśli błąd/timeout → zwróć -1
+```
+
+#### 5.4 Algorytm zamykania drzwi przed odjazdem
+
+```
+1. Ustaw flagę bus_na_przystanku = false
+2. Sygnalizuj odjazd (SEM_BUS_SIGNAL = 1)
+3. Odpowiedz odmownie wszystkim w kolejce:
+   a. Odbierz bilety VIP (mtype = PID)
+   b. Wyślij odmowę
+   c. Odbierz bilety zwykłe (mtype = PID + 1000000)
+   d. Wyślij odmowę
+4. Zamknij drzwi (max 5 prób z timeout):
+   a. Spróbuj zająć semafor drzwi normalnych
+   b. Spróbuj zająć semafor drzwi rowerowych
+   c. Pasażerowie widzą flagę false i zwalniają semafory
+5. Po zamknięciu → zwolnij przystanek
+```
+
+#### 5.5 Algorytm dyspozytora
+
+```
+1. Utwórz zasoby IPC (semafory, pamięć dzielona, kolejki)
+2. Zainicjalizuj semafory i pamięć dzieloną
+3. Uruchom procesy kas (fork + exec)
+4. Uruchom procesy autobusów (fork + exec)
+5. Uruchom generator pasażerów (fork + exec)
+6. PĘTLA GŁÓWNA:
+   a. Czekaj na sygnały (pause)
+   b. SIGUSR1 → wyślij do aktualnego autobusu (wymuszony odjazd)
+   c. SIGUSR2 → ustaw dworzec_otwarty = false
+   d. SIGINT/SIGTERM → rozpocznij shutdown
+7. Wyślij SIGTERM do wszystkich procesów potomnych
+8. Czekaj na zakończenie procesów
+9. Zapisz raport końcowy
+10. Usuń zasoby IPC
+```
+
+#### 5.6 Algorytm generatora pasażerów
+
+```
+1. PĘTLA (n liczba pasażerów w trybie testowym / nieskończona w produkcyjnym):
+   a. Sprawdź czy symulacja aktywna i dworzec otwarty
+   b. Jeśli nie → zakończ natychmiast
+   c. Wylosuj typ pasażera (20% rodzic z dzieckiem, 80% zwykły)
+   d. Utwórz proces pasażera (fork)
+   e. W procesie dziecka: execl("./bin/pasazer", typ, id)
+   f. W trybie produkcyjnym: czekaj 1-2 sekundy
+2. Zakończ
+```
+
+#### 5.7 Algorytm rodzica z dzieckiem (wątki)
+
+```
+1. Utwórz mutex i zmienną warunkową
+2. Zainicjalizuj flagę zakoncz = 0
+3. Utwórz wątek dziecka (pthread_create)
+4. WĄTEK DZIECKA:
+   a. Zablokuj mutex
+   b. Czekaj na zmienną warunkową (pthread_cond_wait)
+   c. Po sygnale → zakończ wątek
+5. WĄTEK RODZICA:
+   a. Kup 2 bilety
+   b. Czekaj na autobus (jak zwykły pasażer, ale ile_osob=2)
+   c. Po zakończeniu:
+      - Zablokuj mutex
+      - Ustaw zakoncz = 1
+      - Sygnalizuj zmienną warunkową
+      - Odblokuj mutex
+      - Czekaj na wątek dziecka (pthread_join)
+6. Zniszcz mutex i zmienną warunkową
+```
+
+
+## 6. Sekcje krytyczne kodu
+
+### 6.1 Dostęp do pamięci dzielonej
 
 Każdy dostęp do pamięci dzielonej jest chroniony semaforem SEM_SHM z flagą SEM_UNDO i obsługą EINTR.
 
-**Kod:** [pasazer.c linie 72-73](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L72-L73) - definicja operacji semaforowych, [pasazer.c linie 229-231](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L229-L231) - przykład użycia z obsługą EINTR
+**Kod:** [pasazer.c linie 72-73](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L71-L72) - definicja operacji semaforowych, [pasazer.c linie 229-231](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L229-L231) - przykład użycia z obsługą EINTR
 
-### 5.2 Sekwencyjne zajęcie drzwi przez rowerzystę
+### 6.2 Sekwencyjne zajęcie drzwi przez rowerzystę
 
 Pasażer z rowerem zajmuje semafory **sekwencyjnie** - najpierw DOOR_NORMAL, potem DOOR_ROWER. Użycie `semtimedop` z timeoutem pozwala na okresowe sprawdzanie czy autobus nie odjechał. Po każdym zajęciu semafora sprawdzamy stan autobusu. Zapobiega to zakleszczeniu gdy autobus odjeżdża podczas oczekiwania.
 
-**Kod:** [pasazer.c linie 119-122](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L119-L122) - definicja operacji na semaforach drzwi, [pasazer.c linie 127-150](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L127-L150) - sekwencyjne zajmowanie z timeout
+**Kod:** [pasazer.c linie 117-120](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L117-L120) - definicja operacji na semaforach drzwi, [pasazer.c linie 123-150](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L123-L150) - sekwencyjne zajmowanie z timeout
 
-### 5.3 Zamykanie drzwi przed odjazdem
+### 6.3 Zamykanie drzwi przed odjazdem
 
 Autobus przed zamknięciem drzwi ustawia `bus_na_przystanku=false`. Pasażerowie sprawdzają tę flagę i zwalniają semafory. Autobus używa `semtimedop` z timeoutem i wieloma próbami.
 
-**Kod:** [bus.c linie 287-289](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L287-L289) - ustawienie flagi przed odjazdem, [bus.c linie 310-324](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L310-L324) - zamykanie drzwi z timeout i wieloma próbami
+**Kod:** [bus.c linie 287-289](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L287-L289) - ustawienie flagi przed odjazdem, [bus.c linie 310-324](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L320-L346) - zamykanie drzwi z timeout i wieloma próbami
 
-### 5.4 Synchronizacja rodzic-dziecko (wątki)
+### 6.4 Synchronizacja rodzic-dziecko (wątki)
 
 Zmienna warunkowa (`pthread_cond_t`) zapewnia efektywne oczekiwanie wątku dziecka bez busy-wait. Mutex chroni dostęp do flagi `zakoncz`.
 
-**Kod:** [pasazer.c linie 641-643](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L641-L643) - inicjalizacja mutex, cond i flagi, [pasazer.c linie 23-27](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L23-L27) - oczekiwanie wątku dziecka, [pasazer.c linie 673-676](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L673-L676) - sygnalizacja zakończenia
+**Kod:** [pasazer.c linie 636-643](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L636-L643) - inicjalizacja mutex, cond i flagi, [pasazer.c linie 23-31](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L23-L31) - oczekiwanie wątku dziecka, [pasazer.c linie 669-679](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L669-L679) - sygnalizacja zakończenia
 
-### 5.5 Obsługa sygnałów
+### 6.5 Obsługa sygnałów
 
 Handlery sygnałów używają `volatile sig_atomic_t` dla bezpiecznej komunikacji. Handler tylko ustawia flagę - obsługa w głównej pętli.
 
-**Kod:** [bus.c linie 12-13](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L12-L13) - deklaracja flag volatile, [bus.c linie 16-21](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L16-L21) - handler ustawiający flagi, [bus.c linia 72](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L72) - sprawdzanie flagi w głównej pętli
-
-
----
-
-## 6. Środowisko testowe
-
-**System operacyjny:** Debian GNU/Linux 11 (bullseye)
-
-**Kernel:** Linux 6.12.54-linuxkit
-
-**Kompilator:** gcc 10.2.1
-
-**IDE:** Visual Studio Code z rozszerzeniem Dev Containers
-
-**Konteneryzacja:** Docker z konfiguracją w `.devcontainer/`
-
-### 6.1 Tryb testowy
-
-Projekt posiada przełącznik `TRYB_TESTOWY` w pliku [common.h](https://github.com/JaneckiGit/ProjektSO/blob/main/include/common.h) (linia 6).
-
-W trybie testowym: T=10ms, Ti=0ms, 10000 pasażerów, brak opóźnień. W trybie produkcyjnym: T=5000ms, Ti=15-30s, nieograniczona liczba pasażerów, odstępy 1-2s.
-
-
+**Kod:** [bus.c linie 12-13](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L12-L13) - deklaracja flag volatile, [bus.c linie 16-21](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L16-L21) - handler ustawiający flagi, [bus.c linia 75](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L75) - sprawdzanie flagi w głównej pętli
 
 ---
 
-## 7. Struktura projektu
+## 7 Testy
 
-```
-ProjektSO/
-├── .devcontainer/                 # Konfiguracja Docker
-│   ├── devcontainer.json
-│   ├── Dockerfile
-│   └── reinstall-cmake.sh
-├── include/                       # Pliki nagłówkowe
-│   ├── common.h                   # Definicje wspólne
-│   ├── bus.h, dyspozytor.h, kasa.h, pasazer.h
-├── src/                           # Pliki źródłowe
-│   ├── main.c                     # Punkt wejścia
-│   ├── dyspozytor.c               # Zarządzanie symulacją
-│   ├── bus.c                      # Logika autobusu
-│   ├── kasa.c                     # Obsługa kasy
-│   ├── pasazer.c                  # Pasażerowie i generator
-│   └── utils.c                    # Funkcje pomocnicze
-├── bin/                           # Pliki wykonywalne
-├── tests/                         # Skrypty testowe
-├── Makefile
-└── raport.txt                     # Raport z symulacji
-```
-
----
-
-## 8. Testy
-
-### 8.1 TEST 1: zabicie procesu pasażera w drzwiach ZALICZONY
+### 7.1 TEST 1: zabicie procesu pasażera w drzwiach ZALICZONY
 **Cel:Weryfikacja działania SEM_UNDO - automatycznego zwalniania semaforów gdy proces trzymający semafor zostanie zabity. Test sprawdza czy system nie blokuje się na zawsze gdy pasażer "umrze" trzymając semafor drzwi.
 **Opis:Zatrzymanie procesu pasażera gdy trzyma semafor drzwi. Inni pasażerowie i autobus muszą czekać. Po zabiciu procesu (SIGKILL), SEM_UNDO powinno automatycznie ZWOLNIĆ semafor. modyfikacja w pliku pasazer dodanie dodatkowego loga oraz dodanie przedłużonego czasu
 **Wynik: Po SIGKILL semafor zostaje automatycznie zwolniony (SEM_UNDO)
@@ -352,13 +480,13 @@ Symulacja kontynuuje normalnie
 
 <img width="607" height="75" alt="Zrzut ekranu 2026-01-27 o 23 03 11" src="https://github.com/user-attachments/assets/ac695000-7066-4446-be16-e7c3bb74d1cd" />
 
-### 8.2 TEST 2: Obsługa sygnału SIGUSR1 (Wymuszony odjazd) ZALICZONY
+### 7.2 TEST 2: Obsługa sygnału SIGUSR1 (Wymuszony odjazd) ZALICZONY
 **Cel: Potwierdzenie, że dyspozytor potrafi wymusić natychmiastowy odjazd autobusu stojącego na peronie przed upływem czasu postoju.
 **Opis: Autobus nie może czekać pełnych 15 sekund. W logach musi pojawić się komunikat potwierdzający odbiór sygnału: „>>> WYMUSZONY ODJAZD (SIGUSR1)”.
 
 <img width="605" height="118" alt="Zrzut ekranu 2026-01-27 o 23 04 05" src="https://github.com/user-attachments/assets/8fb0cb1a-637f-4ea8-bed0-4e3c1b82bb75" />
 
-### 8.3 TEST 3: Obciążeniowy – Jedna kasa ZALICZONY
+### 7.3 TEST 3: Obciążeniowy – Jedna kasa ZALICZONY
 **Cel: Sprawdzenie stabilności kolejek IPC oraz spójności danych statystycznych przy ekstremalnym obciążeniu jednego punktu sprzedaży.
 **Opis: Uruchomienie symulacji z parametrami K=1 oraz 10 000 pasażerów. Test weryfikuje wydajność kolejki komunikatów msg_kasa_id oraz poprawność działania semafora SEM_KASA_STRAZNIK, który ogranicza liczbę osób mogących jednocześnie oczekiwać na obsługę. Kluczowe jest sprawdzenie, czy przy tak dużej liczbie operacji na pamięci dzielonej (SEM_SHM) nie dochodzi do utraty danych.
 
@@ -368,7 +496,7 @@ Symulacja kontynuuje normalnie
 
 <img width="594" height="367" alt="Zrzut ekranu 2026-01-27 o 20 29 31" src="https://github.com/user-attachments/assets/e7ea29d8-1707-48df-a283-2eb66adcd782" />
 
-### 8.4 TEST 4: Blokada sprzedaży biletów (Brak środków) ZALICZONY
+### 7.4 TEST 4: Blokada sprzedaży biletów (Brak środków) ZALICZONY
 **Cel: Weryfikacja zachowania systemu w sytuacji całkowitego braku sprzedaży biletów w kasach oraz obsługa pasażerów odrzuconych przez kierowcę.
 **Opis: Modyfikacja prawdopodobieństwa w module kasa.c na 100% szans na odmowę (brak środków). Uruchomienie symulacji dla 5000 pasażerów przy dużej liczbie autobusów. Test sprawdza, czy pasażerowie bez biletów są poprawnie identyfikowani przez kierowcę, odrzucani i czy statystyka opuscilo_bez_jazdy oraz odrzuconych_bez_biletu w pamięci dzielonej (SharedData) jest poprawnie aktualizowana.
 
@@ -377,6 +505,12 @@ Symulacja kontynuuje normalnie
 <img width="607" height="187" alt="Zrzut ekranu 2026-01-27 o 23 09 31" src="https://github.com/user-attachments/assets/3f0b8539-1a51-4d8d-a5a0-623bbd401a25" />
 
 <img width="608" height="279" alt="Zrzut ekranu 2026-01-27 o 23 09 37" src="https://github.com/user-attachments/assets/18c74b18-6c2e-400e-8d4f-0525308599e7" />
+
+### 7.5 TEST 5: Test obciążeniowy Limit miejsc
+**Cel: Weryfikacja stabilności systemu i poprawności odmów w warunkach małej pojemności autobusu przy dużym natężeniu ruchu.
+**Opis:Ze względu na limit 5 miejsc, system musi regularnie odmawiać wejścia pasażerom. Test kończy się sukcesem, jeśli w logach zostanie wykryty (dzieje sie to głównie przy rodzicu z dzieckiem ponieważ 4/5 miejsc to pow wejsciu 6/5 NIEPRAWIDŁOWO ) komunikat „Odmowa”
+
+<img width="602" height="153" alt="Zrzut ekranu 2026-01-27 o 23 31 30" src="https://github.com/user-attachments/assets/d27e880d-4130-4272-8658-60367256190b" />
 
 ```bash
 ./bin/autobus_main 3 10 3 5000 2 &
@@ -387,7 +521,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 
 ---
 
-## 9. Zrealizowane funkcjonalności
+## 8. Zrealizowane funkcjonalności
 
 - Wieloprocesowa architektura z fork() i exec()
 - Synchronizacja semaforami System V
@@ -409,29 +543,29 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 
 ---
 
-## 10. Napotkane problemy
+## 9. Napotkane problemy
 
-### 10.1 Zakleszczenie przy zamykaniu drzwi
+### 9.1 Zakleszczenie przy zamykaniu drzwi
 **Problem:** Autobus blokował się przy próbie zamknięcia drzwi gdy pasażer był w trakcie wchodzenia.
 **Rozwiązanie:** Przed zamknięciem drzwi autobus ustawia `bus_na_przystanku=false`. Pasażerowie sprawdzają tę flagę i zwalniają semafory. Autobus używa `semtimedop` z timeoutem.
 
-### 10.2 Duplikaty pasażerów
+### 9.2 Duplikaty pasażerów
 **Problem:** Ten sam pasażer mógł wysłać bilet do dwóch różnych autobusów.
 **Rozwiązanie:** Pasażer trzyma semafor drzwi przez cały czas od wysłania biletu do otrzymania odpowiedzi. Dodatkowo pamięta PID ostatniego autobusu który go odrzucił.
 
-### 10.3 Zombie processes
+### 9.3 Zombie processes
 **Problem:** Duża liczba procesów pasażerów powodowała gromadzenie się zombie.
 **Rozwiązanie:** `signal(SIGCHLD, SIG_IGN)` dla automatycznego zbierania, handler SIGCHLD z `waitpid(WNOHANG)` w dyspozytorze, wątek czyszczący w tle.
 
-### 10.5 Pełna kolejka komunikatów
+### 9.5 Pełna kolejka komunikatów
 **Problem:** Przy dużej liczbie pasażerów kolejka komunikatów zapełniała się.
-**Rozwiązanie:** utworzenie semafora STRAŻNIKA .
+**Rozwiązanie:** utworzenie semafora STRAŻNIKA.
 
 ---
 
-## 11. Linki do fragmentów kodu
+## 10. Linki do fragmentów kodu
 
-### 11.1 Tworzenie i obsługa procesów
+### 10.1 Tworzenie i obsługa procesów
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -447,7 +581,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | exit() - zakończenie autobusu | bus.c | [409](https://github.com/JaneckiGit/ProjektSO/blob/main/src/bus.c#L409) |
 | exit() - zakończenie kasy | kasa.c | [180](https://github.com/JaneckiGit/ProjektSO/blob/main/src/kasa.c#L80) |
 
-### 11.2 Obsługa wątków (pthread)
+### 10.2 Obsługa wątków (pthread)
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -459,7 +593,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | pthread_cond_signal() | pasazer.c | [672](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L672) |
 | watek_dziecko() - funkcja wątku | pasazer.c | [17](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L17) |
 
-### 11.3 Obsługa sygnałów
+### 10.3 Obsługa sygnałów
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -473,7 +607,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | kill() - wysyłanie SIGUSR1 | dyspozytor.c | [295](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L295) |
 | kill() - wysyłanie SIGTERM | dyspozytor.c | [78](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L78) |
 
-### 11.4 Semafory System V
+### 10.4 Semafory System V
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -484,7 +618,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | semop() - blokada drzwi (rowerzysta) | pasazer.c | [144](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L144) |
 | semop() - blokada drzwi (normalny) | pasazer.c | [334](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L334) |
 
-### 11.5 Pamięć dzielona System V
+### 10.5 Pamięć dzielona System V
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -496,7 +630,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | shmdt() - odłączenie | dyspozytor.c | [220](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L220) |
 | shmctl(IPC_RMID) - usuwanie | dyspozytor.c | [69](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L69) |
 
-### 11.6 Kolejki komunikatów System V
+### 10.6 Kolejki komunikatów System V
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -510,7 +644,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | msgrcv() - odpowiedź z kasy | pasazer.c | [486](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L486) |
 | msgctl(IPC_RMID) - usuwanie | dyspozytor.c | [70](https://github.com/JaneckiGit/ProjektSO/blob/main/src/dyspozytor.c#L70) |
 
-### 11.7 Główne funkcje procesów
+### 10.7 Główne funkcje procesów
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -521,7 +655,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 | proces_rodzic_z_dzieckiem() | pasazer.c | [581](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L581) |
 | proces_generator() | pasazer.c | [702](https://github.com/JaneckiGit/ProjektSO/blob/main/src/pasazer.c#L702) |
 
-### 11.8 Funkcje pomocnicze
+### 10.8 Funkcje pomocnicze
 
 | Funkcja | Plik | Linia |
 |---------|------|-------|
@@ -537,7 +671,7 @@ kill -SIGUSR2 <PID>  # zamknięcie dworca
 
 ---
 
-## 12. Podsumowanie
+## 11. Podsumowanie
 
 Projekt "Autobus Podmiejski" został zrealizowany zgodnie ze specyfikacją oraz wymaganiami projektowymi. Zaimplementowano wszystkie wymagane funkcjonalności:
 
