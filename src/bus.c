@@ -1,9 +1,12 @@
 //obsluga autobusu w symulacji
 //autobus jedzie na dworzec, stoi na peronie, zabiera pasazerow i jedzie do miejsca docelowego
 //obsluguje sygnaly SIGUSR1 (wymuszony odjazd) i SIGTERM (koniec pracy)
+#define _GNU_SOURCE
 #include "bus.h"
 #include "common.h"
 #include <sched.h>
+#include <sys/prctl.h>
+
 
 //flagi ustawiane przez handlery sygnalow
 static volatile sig_atomic_t wymuszony_odjazd = 0;
@@ -27,12 +30,18 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     srand(time(NULL) ^ getpid());
     
     //losowy czas trasy dla autobusu (15-30s)
+    //int czas_trasy_Ti = losuj(15000, 30000);  //<<< CZAS TRASY DO MIEJSCA DOCZELOWEGO
+    // int czas_trasy_Ti = 0;
+    #if TRYB_TESTOWY
+    int czas_trasy_Ti = 0;
+    #else
     int czas_trasy_Ti = losuj(15000, 30000);
+    #endif
 
     //konfiguracja handlerow sygnalow
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = handler_bus;
+    sa.sa_handler = handler_bus;    
     sa.sa_flags = SA_RESTART;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGUSR1, &sa, NULL);
@@ -60,9 +69,7 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     int przewiezionych = 0;
     int mam_przystanek = 0;//flaga czy autobus zajal przystanek
     time_t czas_start, czas_koniec;//do mierzenia czasu 
-
-    log_print(KOLOR_BUS, tag, "Miejsca normalne: %d, Miejsca rowerowe: %d, Ti=%dms. PID=%d", 
-              pojemnosc, rowery, czas_trasy_Ti, getpid());//log startu autobusu
+    log_print(KOLOR_BUS, tag, "Miejsca normalne: %d, Miejsca rowerowe: %d, Ti=%dms. PID=%d",pojemnosc, rowery, czas_trasy_Ti, getpid());//log startu autobusu
 
     //glowna petla pracy autobusu
     while (bus_running) {
@@ -71,12 +78,24 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             break;
         }
         //jazda na dworzec pierwszy kurs krotszy
+        //int czas_dojazdu = (kursow == 0) ? losuj(1000, 2000) : losuj(8000, 15000); //<<< CZAS DOJAZDU NA DWORZEC
+        // int czas_dojazdu = 0;
+        #if TRYB_TESTOWY
+        int czas_dojazdu = 0;
+        #else
         int czas_dojazdu = (kursow == 0) ? losuj(1000, 2000) : losuj(8000, 15000);
+        #endif
         log_print(KOLOR_BUS, tag, "Wraca na dworzec (%dms). PID=%d", czas_dojazdu, getpid());
         
         //czekanie z mozliwoscia przerwania oparte na time()
         czas_start = time(NULL);
+        // czas_koniec = czas_start + (czas_dojazdu / 1000) + 1; //<<< CZAS DOJAZDU NA DWORZEC
+        #if TRYB_TESTOWY
+        czas_koniec = czas_start;
+        #else
         czas_koniec = czas_start + (czas_dojazdu / 1000) + 1;
+        #endif
+        // czas_koniec = czas_start;
         while (time(NULL) < czas_koniec && bus_running) {
             if (czy_zakonczyc(shm)) break;
             //usleep(10000);//lub sched_yield();
@@ -84,42 +103,43 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         if (!bus_running || czy_zakonczyc(shm)) {//sprawdzenie warunkow zakonczenia
             log_print(KOLOR_BUS, tag, "Warunki zakonczenia - koncze. PID=%d", getpid());
             break;
-        }
-        //proba zajecia przystanku 
+        }//proba zajecia przystanku 
         log_print(KOLOR_BUS, tag, "Czeka na wjazd na przystanek. PID=%d", getpid());
         struct sembuf zajmij_przystanek = {SEM_BUS_STOP, -1, SEM_UNDO};  //blokujacy!
         //Sprawdz przed zajmowaniem
         if (!shm->dworzec_otwarty || !bus_running) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze. PID=%d", getpid());
             goto koniec;
-        }
-        //blokujace zajecie przystanku 
-        //Petla retry dla EINTR
-        while (semop(sem_id, &zajmij_przystanek, 1) == -1) {
-            if (errno == EINTR) {
-                //Sprawdz czy to nie byl sygnal zakonczenia
+        }//blokujace zajecie przystanku 
+        struct timespec ts_przystanek = {2, 0};
+        while (1) {
+            if (semtimedop(sem_id, &zajmij_przystanek, 1, &ts_przystanek) == 0) break;
+            if (errno == EAGAIN) {  // timeout
                 if (!bus_running || !shm->dworzec_otwarty) {
                     log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze. PID=%d", getpid());
                     goto koniec;
-                }//ponow probe
+                }
                 continue;
-            } else {
-                perror("bus semop zajmij_przystanek");
-                goto koniec;
             }
-        }
-        mam_przystanek = 1;//zajalem przystanek
+            if (errno == EINTR) {
+                if (!bus_running || !shm->dworzec_otwarty) {
+                    log_print(KOLOR_BUS, tag, "Dworzec zamkniety - koncze. PID=%d", getpid());
+                    goto koniec;
+                }
+                continue;
+            }
+            perror("bus semtimedop zajmij_przystanek");
+            goto koniec;
+        }mam_przystanek = 1;//zajalem przystanek
         //sprawdz PO zajeciu czy dworzec nadal otwarty
         if (!shm->dworzec_otwarty || czy_zakonczyc(shm)) {
             log_print(KOLOR_BUS, tag, "Dworzec zamkniety po zajeciu przystanku koncze. PID=%d", getpid());
             semop(sem_id, &zwolnij_przystanek, 1);
             mam_przystanek = 0;
             goto koniec;
-        }
-        //autobus zajal przystanek - aktualizacja stanu
+        }//autobus zajal przystanek - aktualizacja stanu
         kursow++;
         wymuszony_odjazd = 0;
-
         while (semop(sem_id, &shm_lock, 1) == -1) {
             if (errno == EINTR) continue;
             break;
@@ -130,11 +150,11 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         shm->miejsca_zajete = 0;
         shm->rowery_zajete = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
-
-        log_print(KOLOR_BUS, tag, "[Kurs #%d] Na przystanku. PID=%d, Miejsca: 0/%d, Rowery: 0/%d",
-                  kursow, getpid(), pojemnosc, rowery);
-
-        //postój i przyjmowanie pasażerów
+        
+        semctl(sem_id, SEM_BUS_SIGNAL, SETVAL, 0);
+        
+        log_print(KOLOR_BUS, tag, "[Kurs #%d] Na przystanku. PID=%d, Miejsca: 0/%d, Rowery: 0/%d",kursow, getpid(), pojemnosc, rowery);
+        //postoj i przyjmowanie pasażerów
         int czas_na_przystanku = 0;//czas spedzony na przystanku
         int pasazerow_w_kursie = 0;
 
@@ -152,19 +172,20 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
             semop(sem_id, &zwolnij_przystanek, 1);
             mam_przystanek = 0;
             break;
-        } else {
-            //petla przyjmowania pasazerow
-            czas_start = time(NULL);  //start pomiaru czasu postoju
-    
-            while (czas_na_przystanku < czas_postoju && !wymuszony_odjazd && bus_running && shm->dworzec_otwarty) {
-            BiletMsg bilet;
-            //najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
-            ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
-            if (ret == -1 && errno == ENOMSG) {
-            ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT);
-            }
-            if (ret != -1) {
-                    //weryfikacja biletu
+        } else {//petla przyjmowania pasazerow
+        czas_start = time(NULL);  
+        while (czas_na_przystanku < czas_postoju && !wymuszony_odjazd && bus_running && shm->dworzec_otwarty) {
+        BiletMsg bilet;
+        //najpierw VIP (mtype=PID), potem zwykli (mtype=PID+1000000)
+        ssize_t ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT);
+        if (ret == -1 && errno == ENOMSG) {
+        ret = msgrcv(msg_id, &bilet, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT);
+        }
+        if (ret == -1) {
+            czas_na_przystanku = (int)((time(NULL) - czas_start) * 1000);
+            continue;
+        }
+        if (ret != -1) {//weryfikacja biletu
                     if (!bilet.ma_bilet) {
                         log_print(KOLOR_BUS, tag, "Kierowca: PAS %d BEZ BILETU - odmowa!", bilet.id_pasazera);
                         if (semop(sem_id, &shm_lock, 1) == 0) {
@@ -216,16 +237,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
                         //log wsiadania
                         if (bilet.wiek_dziecka > 0) {//z dzieckiem
-                            log_print(KOLOR_BUS, tag,
-                                      "Wsiadl PAS %d (PID=%d, wiek=%d) z dzieckiem (wiek=%d)%s. "
-                                      "Miejsca: %d/%d, Rowery: %d/%d",
+                            log_print(KOLOR_BUS, tag,"Wsiadl PAS %d (PID=%d, wiek=%d) z dzieckiem (wiek=%d)%s. " "Miejsca: %d/%d, Rowery: %d/%d",
                                       bilet.id_pasazera, bilet.pid_pasazera, bilet.wiek,
                                       bilet.wiek_dziecka, bilet.czy_vip ? " VIP" : "",
                                       miejsca, pojemnosc, rower_zajete, rowery);
                         } else {//bez dziecka
-                            log_print(KOLOR_BUS, tag,
-                                      "Wsiadl PAS %d (PID=%d, wiek=%d)%s%s. "
-                                      "Miejsca: %d/%d, Rowery: %d/%d",
+                            log_print(KOLOR_BUS, tag,"Wsiadl PAS %d (PID=%d, wiek=%d)%s%s. " "Miejsca: %d/%d, Rowery: %d/%d",
                                       bilet.id_pasazera, bilet.pid_pasazera, bilet.wiek,
                                       bilet.czy_rower ? " +rower" : "",
                                       bilet.czy_vip ? " VIP" : "",
@@ -252,7 +269,8 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                         msgsnd(msg_id, &odp, sizeof(OdpowiedzMsg) - sizeof(long), 0);
                     }
                 }
-                czas_na_przystanku = (int)((time(NULL) - czas_start) * 1000);
+                // czas_na_przystanku = (int)((time(NULL) - czas_start) * 1000);
+                czas_na_przystanku = (int)(time(NULL) - czas_start);
             }
             if (wymuszony_odjazd) {
                 log_print(KOLOR_BUS, tag, ">>> WYMUSZONY ODJAZD (SIGUSR1)! PID=%d <<<", getpid());
@@ -272,40 +290,57 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
                 break;
             }
         }//sygnalizacja odjazdu pasazerowie w drzwiach zobacza ze bus odjechal i zwolnia semafor
-        while (semop(sem_id, &shm_lock, 1) == -1) {
-            if (errno == EINTR) continue;
-            break;
-        }
+        //ODJAZD - najpierw ustaw flage, potem odpowiedz, potem zamknij drzwi
+        while (semop(sem_id, &shm_lock, 1) == -1 && errno == EINTR);
         shm->bus_na_przystanku = false;
         shm->aktualny_bus_pid = 0;
         shm->aktualny_bus_id = 0;
         while (semop(sem_id, &shm_unlock, 1) == -1 && errno == EINTR);
         
-        //Odpowiedz wszystkim nieobsluzonym pasazerom (zeby nie czekali w nieskonczonosc) ODMOW
+        semctl(sem_id, SEM_BUS_SIGNAL, SETVAL, 1);
+        //Odpowiedz wszystkim nieobsluzonym pasazerom ODMOW
         BiletMsg old;
         OdpowiedzMsg odmowa;
         odmowa.przyjety = 0;
-        
-        //VIP
+        //VIP 
         while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid(), IPC_NOWAIT) != -1) {
-            odmowa.mtype = old.pid_pasazera;
-            msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
-        }//Zwykli
-        while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
-            odmowa.mtype = old.pid_pasazera;
-            msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
+            if (kill(old.pid_pasazera, 0) == 0) {
+                odmowa.mtype = old.pid_pasazera;
+                msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
+            }
         }
-        //Czekaj az drzwi beda wolne (pasazer moze byc w trakcie wsiadania)
-        log_print(KOLOR_BUS, tag, "Czeka az drzwi beda wolne. PID=%d", getpid());
-        struct sembuf zablokuj_oba[2] = {
-            {SEM_DOOR_NORMAL, -1, SEM_UNDO},
-            {SEM_DOOR_ROWER, -1, SEM_UNDO}
-        };
-        while (semop(sem_id, zablokuj_oba, 2) == -1 && errno == EINTR);
-        log_print(KOLOR_BUS, tag, "ZAMYKAM DRZWI PRZED ODJAZDEM. PID=%d", getpid());
+        //Zwykli 
+        while (msgrcv(msg_id, &old, sizeof(BiletMsg) - sizeof(long), getpid() + 1000000, IPC_NOWAIT) != -1) {
+            if (kill(old.pid_pasazera, 0) == 0) {
+                odmowa.mtype = old.pid_pasazera;
+                msgsnd(msg_id, &odmowa, sizeof(OdpowiedzMsg) - sizeof(long), IPC_NOWAIT);
+            }
+        }
+        //Zamknij drzwi - pasazerowie juz widza bus_na_przystanku=false i zwalniaja
+        log_print(KOLOR_BUS, tag, "Zamykam drzwi. PID=%d", getpid());
+        struct sembuf zablokuj_normal = {SEM_DOOR_NORMAL, -1, SEM_UNDO};
+        struct sembuf zablokuj_rower = {SEM_DOOR_ROWER, -1, SEM_UNDO};
+        struct timespec ts_drzwi = {0, 50000000};
+        int zamknieto_normal = 0, zamknieto_rower = 0;
+        for (int proba = 0; proba < 5; proba++) {
+            if (!zamknieto_normal) {
+                if (semtimedop(sem_id, &zablokuj_normal, 1, &ts_drzwi) == 0) zamknieto_normal = 1;
+            }
+            if (!zamknieto_rower) {
+                if (semtimedop(sem_id, &zablokuj_rower, 1, &ts_drzwi) == 0) zamknieto_rower = 1;
+            }
+            if (zamknieto_normal && zamknieto_rower) break;
+        }
+        log_print(KOLOR_BUS, tag, "DRZWI ZAMKNIETE. PID=%d", getpid());
         //aktualizacja stanu po odjedzie
         int w_trasie = 0;
-        while (semop(sem_id, &shm_lock, 1) == -1) {
+        struct timespec ts_shm = {0, 50000000};  
+        while (1) {
+            if (semtimedop(sem_id, &shm_lock, 1, &ts_shm) == 0) break;
+            if (errno == EAGAIN) {  // timeout
+                if (!bus_running || !shm->symulacja_aktywna) goto koniec;
+                continue;  // spróbuj ponownie
+            }
             if (errno == EINTR) continue;
             break;
         }
@@ -315,21 +350,27 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
 
         log_print(KOLOR_BUS, tag, "ODJAZD! Zabral %d osob. W trasie: %d. PID=%d",pasazerow_w_kursie, w_trasie, getpid());
         //zwolnienie peronu i otwarcie drzwi
-        semop(sem_id, &odblokuj_drzwi_n, 1);
-        semop(sem_id, &odblokuj_drzwi_r, 1);
+        if (zamknieto_normal) semop(sem_id, &odblokuj_drzwi_n, 1);
+        if (zamknieto_rower) semop(sem_id, &odblokuj_drzwi_r, 1);
         semop(sem_id, &zwolnij_przystanek, 1);
         mam_przystanek = 0;
         //jazda do miejsca docelowego
         log_print(KOLOR_BUS, tag, "Jedzie do miejsca docelowego (%dms). PID=%d", czas_trasy_Ti, getpid());
         
         //jazda do celu oparty na time()
-        czas_start = time(NULL);
+        // czas_start = time(NULL);
+        // czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
+        #if TRYB_TESTOWY
+        czas_koniec = czas_start;
+        #else
         czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
+        #endif
+        // czas_start = time(NULL);
+        // czas_koniec = czas_start; 
         while (time(NULL) < czas_koniec && bus_running) {
             if (!shm->symulacja_aktywna) break;
             //usleep(10000); //lub sched_yield();
         }
-        //pasazerowie wysiadaja w miejscu docelowym KRYTYCZNE, blokujace
         {
             struct sembuf lock = {SEM_SHM, -1, SEM_UNDO};
             struct sembuf unlock = {SEM_SHM, 1, SEM_UNDO};
@@ -364,11 +405,11 @@ koniec://koniec pracy autobusu
     }
     log_print(KOLOR_BUS, tag, "KONIEC. Kursow: %d, Przewiezionych: %d. PID=%d",
               kursow, przewiezionych, getpid());
-
     shmdt(shm);//odlaczenie pamieci dzielonej
     exit(0);
 }
 int main(int argc, char *argv[]) {
+    //prctl(PR_SET_PDEATHSIG, SIGKILL);
     if (argc < 5) {
         fprintf(stderr, "Uzycie: %s <bus_id> <pojemnosc> <rowery> <czas_postoju>\n", argv[0]);
         exit(1);

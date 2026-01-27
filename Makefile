@@ -58,22 +58,4 @@ clean-ipc:
 	@ipcs -q | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -q {} 2>/dev/null || true
 	@echo "Zasoby IPC wyczyszczone"
 
-#Testy automatyczne
-test1: all
-	@./tests/test.sh 1
-test2: all
-	@./tests/test.sh 2
-test3: all
-	@./tests/test.sh 3
-test4: all
-	@./tests/test.sh 4
-test5: all
-	@./tests/test.sh 5
-test6: all
-	@./tests/test.sh 6
-test7: all
-	@./tests/test.sh 7
-test-all: all
-	@./tests/test.sh all
 .PHONY: all directories run clean clean-ipc
-.PHONY: all directories run clean clean-ipc test1 test2 test3 test4 test5 test6 test7 test-all

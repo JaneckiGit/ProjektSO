@@ -1,6 +1,10 @@
 //wspolne definicje i struktury
 #ifndef COMMON_H
 #define COMMON_H
+//#define KASA_QUEUE_SIZE 200 
+// 1 = tryb testowy (szybki, bez opóźnień)
+// 0 = tryb produkcyjny (z opóźnieniami)
+#define TRYB_TESTOWY 1
 
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -24,7 +28,7 @@
 
 //Stałe konfiguracyjne (MAX_BUSES, MAX_CAPACITY)
 #define MAX_BUSES           50//Maksymalna liczba autobusow
-#define MAX_CAPACITY        200//Maksymalna pojemnosc autobusu
+#define MAX_CAPACITY        200000//Maksymalna pojemnosc autobusu
 #define MAX_REGISTERED      100000//Maksymalna liczba zarejestrowanych pasazerow
 #define MAX_KASY            10//Maksymalna liczba kas biletowych
 
@@ -43,7 +47,9 @@
 #define SEM_BUS_STOP     2 //peron - tylko jeden autobus
 #define SEM_LOG          3 //Log
 #define SEM_SHM          4 // pamiec dzielona
-#define SEM_COUNT        5 // liczba semaforow przed kasami
+#define SEM_KASA_STRAZNIK 5 // ochrona kas biletowych
+#define SEM_BUS_SIGNAL   6 // sygnal autobusow
+#define SEM_COUNT        7 // liczba semaforow 
 
 //Pamiec dzielona miedzy wszystkie procesy
 //Dostęp chroniony przez SEM_SHM

@@ -12,12 +12,11 @@ static int ile_kas = 0;//liczba kas
 static pid_t pids_busy[MAX_BUSES];//PID-y autobusow
 static int ile_busow = 0; //liczba autobusow
 static pid_t pid_generator = -1; //PID generatora pasazerow
-
+static pthread_t watek_czyszczacy;
 //flagi sygnalow 
 static volatile sig_atomic_t flaga_sigusr1 = 0;//SIGUSR1 = wymuszony odjazd autobusu
 static volatile sig_atomic_t flaga_sigusr2 = 0;//SIGUSR2 = zamknięcie dworca
 static volatile sig_atomic_t flaga_stop = 0;//SIGINT/SIGTERM = natychmiastowe zakończenie
-
 
 //Handler sygnalow dla dyspozytora sigaction()
 //Handler sygnalow - ustawia flagi, nie wykonuje operacji blokujących
@@ -46,6 +45,22 @@ static void init_semafory(void) {
     semctl(sem_id, SEM_BUS_STOP, SETVAL, arg);//SEM_BUS_STOP - tylko jeden autobus na peronie
     semctl(sem_id, SEM_LOG, SETVAL, arg);//SEM_LOG - sekcja krytyczna logow
     semctl(sem_id, SEM_SHM, SETVAL, arg);// SEM_SHM - ochrona pamięci dzielonej
+    semctl(sem_id, SEM_KASA_STRAZNIK, SETVAL, 200);// SEM_KASA_STRAZNIK 
+    arg.val = 1;  
+    semctl(sem_id, SEM_BUS_SIGNAL, SETVAL, arg);
+}
+static void* cleanup_fun(void* arg) {
+    (void)arg;
+    while (1) {
+        if (wait(NULL) == -1) {
+            if (errno == ECHILD) {
+                usleep(50000);
+                continue;
+            }
+            perror("wait");
+        }
+    }
+    return NULL;
 }
 //Sprzatanie zasobow IPC
 //wywolywane przy zakonczeniu symulacji
@@ -87,6 +102,8 @@ static void shutdown_children(void) {
     for (int i = 0; i < ile_busow; i++) {
         if (pids_busy[i] > 0) kill(pids_busy[i], SIGKILL);
     }
+    pthread_cancel(watek_czyszczacy);
+    pthread_join(watek_czyszczacy, NULL);
     //ostateczne czekanie
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -181,6 +198,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         msgctl(msg_kasa_id, IPC_SET, &buf);
     }
     init_semafory();
+    pthread_create(&watek_czyszczacy, NULL, cleanup_fun, NULL);
     //inicjalizacja pamieci dzielonej shmat() shmdt()
     SharedData *shm = (SharedData *)shmat(shm_id, NULL, 0);
     if (shm == (void *)-1) {
@@ -229,14 +247,13 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         }
         log_print(KOLOR_KASA, "KASA", "KASA %d uruchomiona. PID=%d", i + 1, pids_kasy[i]);
     }
-    //uruchomienie autobusow
-    ile_busow = N;
+    ile_busow = N;    //uruchomienie autobusow
     for (int i = 0; i < N; i++) {
         pids_busy[i] = fork();
         if (pids_busy[i] == -1) {
             perror("fork bus");
             shutdown_children();
-            cleanup_ipc();
+            cleanup_ipc();  
             exit(1);
         }
         if (pids_busy[i] == 0) {
@@ -264,8 +281,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
         perror("execl generator");
         exit(1);
     }
-    //GŁÓWNA PETLA DYSPOTYZORA
-    while (!flaga_stop) {
+    while (!flaga_stop) {//GŁÓWNA PETLA DYSPOTYZORA
         //obsluga SIGUSR1 wymuszony odjazd
         if (flaga_sigusr1) {
             flaga_sigusr1 = 0;
@@ -347,7 +363,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
             }shmdt(s);
         }
         waitpid(-1, NULL, WNOHANG);
-        usleep(100000);
+        //usleep(100000);
     }
     //ZAKONCZENIE
     if (flaga_stop) {
@@ -389,7 +405,7 @@ void proces_dyspozytor(int N, int P, int R, int T, int K) {
                 waitpid(-1, NULL, WNOHANG);
             }
         }
-        //usleep(2000); //lub sched_yield();
+        //usleep(20000); //lub sched_yield();
         shutdown_children();
     }
     //Podsumowanie - TYLKO przy SIGUSR2 (graceful shutdown)
