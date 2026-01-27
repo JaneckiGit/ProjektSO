@@ -703,9 +703,15 @@ void proces_generator(void) {
     signal(SIGCHLD, SIG_IGN);
     srand(time(NULL) ^ getpid());
     int id_pas = 0;
-    int n = 10000; //liczba pasazerow do wygenerowania
-    while (n--) { //generuj n paszerow 
+    // int n = 10000; //liczba pasazerow do wygenerowania
+    // while (n--) { //generuj n paszerow 
     //while (1) { //nieograniczona liczba pasazerow
+    #if TRYB_TESTOWY
+    int n = 10000;
+    while (n--) {
+    #else
+    while (1) {
+    #endif  
         SharedData *s = (SharedData *)shmat(shm_id, NULL, 0);
         if (s == (void *)-1) exit(1);
         bool aktywna = s->symulacja_aktywna;
@@ -734,18 +740,20 @@ void proces_generator(void) {
             exit(1);
         }
         id_pas++;
-        // {
-        //     time_t gen_start = time(NULL);//czas rozpoczecia generowania
-        //     time_t gen_koniec = gen_start + losuj(1, 2);  //1-2 sekundy
-        //     while (time(NULL) < gen_koniec) {//czekaj z przerwami na sprawdzenie stanu symulacji
-        //         SharedData *chk = (SharedData *)shmat(shm_id, NULL, 0);//sprawdz stan symulacji
-        //         if (chk != (void *)-1) {//udalo sie dolaczyc
-        //             bool akt = chk->symulacja_aktywna;//sprawdz czy aktywna
-        //             shmdt(chk);//odlaczenie
-        //             if (!akt) break;//wyjscie z petli
-        //         }
-        //     }
-        // }
+        #if !TRYB_TESTOWY
+        {
+            time_t gen_start = time(NULL);//czas rozpoczecia generowania
+            time_t gen_koniec = gen_start + losuj(1, 2);  //1-2 sekundy
+            while (time(NULL) < gen_koniec) {//czekaj z przerwami na sprawdzenie stanu symulacji
+                SharedData *chk = (SharedData *)shmat(shm_id, NULL, 0);//sprawdz stan symulacji
+                if (chk != (void *)-1) {//udalo sie dolaczyc
+                    bool akt = chk->symulacja_aktywna;//sprawdz czy aktywna
+                    shmdt(chk);//odlaczenie
+                    if (!akt) break;//wyjscie z petli
+                }
+            }
+        }
+        #endif
     }
     exit(0);
 }

@@ -2,6 +2,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 //#define KASA_QUEUE_SIZE 200 
+// 1 = tryb testowy (szybki, bez opóźnień)
+// 0 = tryb produkcyjny (z opóźnieniami)
+#define TRYB_TESTOWY 1
 
 #include <sys/types.h>
 #include <sys/ipc.h>

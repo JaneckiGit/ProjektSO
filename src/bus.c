@@ -8,7 +8,6 @@
 #include <sys/prctl.h>
 
 
-
 //flagi ustawiane przez handlery sygnalow
 static volatile sig_atomic_t wymuszony_odjazd = 0;
 static volatile sig_atomic_t bus_running = 1;
@@ -32,7 +31,12 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
     
     //losowy czas trasy dla autobusu (15-30s)
     //int czas_trasy_Ti = losuj(15000, 30000);  //<<< CZAS TRASY DO MIEJSCA DOCZELOWEGO
+    // int czas_trasy_Ti = 0;
+    #if TRYB_TESTOWY
     int czas_trasy_Ti = 0;
+    #else
+    int czas_trasy_Ti = losuj(15000, 30000);
+    #endif
 
     //konfiguracja handlerow sygnalow
     struct sigaction sa;
@@ -75,14 +79,23 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         }
         //jazda na dworzec pierwszy kurs krotszy
         //int czas_dojazdu = (kursow == 0) ? losuj(1000, 2000) : losuj(8000, 15000); //<<< CZAS DOJAZDU NA DWORZEC
+        // int czas_dojazdu = 0;
+        #if TRYB_TESTOWY
         int czas_dojazdu = 0;
+        #else
+        int czas_dojazdu = (kursow == 0) ? losuj(1000, 2000) : losuj(8000, 15000);
+        #endif
         log_print(KOLOR_BUS, tag, "Wraca na dworzec (%dms). PID=%d", czas_dojazdu, getpid());
         
         //czekanie z mozliwoscia przerwania oparte na time()
-        // czas_start = time(NULL);
-        // czas_koniec = czas_start + (czas_dojazdu / 1000) + 1; //<<< CZAS DOJAZDU NA DWORZEC
         czas_start = time(NULL);
+        // czas_koniec = czas_start + (czas_dojazdu / 1000) + 1; //<<< CZAS DOJAZDU NA DWORZEC
+        #if TRYB_TESTOWY
         czas_koniec = czas_start;
+        #else
+        czas_koniec = czas_start + (czas_dojazdu / 1000) + 1;
+        #endif
+        // czas_koniec = czas_start;
         while (time(NULL) < czas_koniec && bus_running) {
             if (czy_zakonczyc(shm)) break;
             //usleep(10000);//lub sched_yield();
@@ -347,8 +360,13 @@ void proces_autobus(int bus_id, int pojemnosc, int rowery, int czas_postoju) {
         //jazda do celu oparty na time()
         // czas_start = time(NULL);
         // czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
-        czas_start = time(NULL);
-        czas_koniec = czas_start; //<<< CZAS TRASY DO MIEJSCA DOCZELOWEGO
+        #if TRYB_TESTOWY
+        czas_koniec = czas_start;
+        #else
+        czas_koniec = czas_start + (czas_trasy_Ti / 1000) + 1;
+        #endif
+        // czas_start = time(NULL);
+        // czas_koniec = czas_start; 
         while (time(NULL) < czas_koniec && bus_running) {
             if (!shm->symulacja_aktywna) break;
             //usleep(10000); //lub sched_yield();
